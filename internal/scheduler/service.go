@@ -28,17 +28,20 @@ func New(db *sql.DB, m Membership, log *slog.Logger) *Service {
 	return &Service{db: db, members: m, log: log, Now: time.Now}
 }
 
-const settingColumns = "channel_id,mode,timezone,anchor_ms,seed,movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled"
+const settingColumns = "channel_id,mode,timezone,anchor_ms,seed,movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,recency_weighted,avoid_same_show,min_other_shows"
 
 func (s *Service) Settings(ctx context.Context, id string) (Settings, error) {
 	var v Settings
-	e := s.db.QueryRowContext(ctx, "SELECT "+settingColumns+" FROM channel_schedule_settings WHERE channel_id=?", id).Scan(&v.ChannelID, &v.Mode, &v.Timezone, &v.Anchor, &v.Seed, &v.MovieDays, &v.EpisodeDays, &v.PastDays, &v.FutureDays, &v.IncludeUnavailable, &v.Enabled)
+	e := s.db.QueryRowContext(ctx, "SELECT "+settingColumns+" FROM channel_schedule_settings WHERE channel_id=?", id).Scan(&v.ChannelID, &v.Mode, &v.Timezone, &v.Anchor, &v.Seed, &v.MovieDays, &v.EpisodeDays, &v.PastDays, &v.FutureDays, &v.IncludeUnavailable, &v.Enabled, &v.RecencyWeighted, &v.AvoidSameShow, &v.MinOtherShows)
 	if errors.Is(e, sql.ErrNoRows) {
 		return v, &Error{"NOT_FOUND", "Channel schedule settings not found"}
 	}
 	return v, e
 }
 func valid(v Settings) error {
+	if v.MinOtherShows < 0 || v.MinOtherShows > 10 {
+		return invalid("Choose 0–10 other shows before repeating a show")
+	}
 	if v.Mode != "SEQUENTIAL" && v.Mode != "RANDOM" && v.Mode != "SMART_RANDOM" {
 		return invalid("Choose sequential, random or smart random")
 	}
@@ -72,7 +75,7 @@ func (s *Service) SaveSettings(ctx context.Context, id string, v Settings, actor
 		return v, e
 	}
 	defer tx.Rollback()
-	_, e = tx.ExecContext(ctx, `UPDATE channel_schedule_settings SET mode=?,timezone=?,anchor_ms=?,seed=?,movie_repeat_days=?,episode_repeat_days=?,past_days=?,future_days=?,include_unavailable=?,enabled=?,updated_at=? WHERE channel_id=?`, v.Mode, v.Timezone, v.Anchor, v.Seed, v.MovieDays, v.EpisodeDays, v.PastDays, v.FutureDays, v.IncludeUnavailable, v.Enabled, s.Now().Unix(), id)
+	_, e = tx.ExecContext(ctx, `UPDATE channel_schedule_settings SET mode=?,timezone=?,anchor_ms=?,seed=?,movie_repeat_days=?,episode_repeat_days=?,past_days=?,future_days=?,include_unavailable=?,enabled=?,recency_weighted=?,avoid_same_show=?,min_other_shows=?,updated_at=? WHERE channel_id=?`, v.Mode, v.Timezone, v.Anchor, v.Seed, v.MovieDays, v.EpisodeDays, v.PastDays, v.FutureDays, v.IncludeUnavailable, v.Enabled, v.RecencyWeighted, v.AvoidSameShow, v.MinOtherShows, s.Now().Unix(), id)
 	if e != nil {
 		return v, e
 	}
@@ -116,13 +119,21 @@ func (s *Service) input(ctx context.Context, v Settings) (channels.Channel, []It
 		if m.Season != nil {
 			season = *m.Season
 		}
-		items = append(items, Item{m.ID, *m.DurationMS, m.Type, m.ShowID, season})
+		item := Item{ID: m.ID, Duration: *m.DurationMS, Type: m.Type, Show: m.ShowID, Season: season}
+		if v.RecencyWeighted {
+			item.AddedAt = m.AddedAt
+		}
+		items = append(items, item)
 	}
 	if v.Mode != "SEQUENTIAL" {
 		sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	}
 	// Horizon/timezone changes extend/prune without changing the selection sequence.
-	config := hash([]any{v.ChannelID, v.Mode, v.Seed, v.Anchor, v.MovieDays, v.EpisodeDays, v.IncludeUnavailable, c.Source})
+	inputs := []any{v.ChannelID, v.Mode, v.Seed, v.Anchor, v.MovieDays, v.EpisodeDays, v.IncludeUnavailable, c.Source}
+	if v.RecencyWeighted || v.AvoidSameShow || v.MinOtherShows > 0 {
+		inputs = append(inputs, v.RecencyWeighted, v.AvoidSameShow, v.MinOtherShows)
+	}
+	config := hash(inputs)
 	return c, items, len(media), hash([]any{config, items}), config, nil
 }
 func (s *Service) horizon(v Settings) (int64, int64) {
@@ -202,8 +213,12 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 		return out, e
 	}
 	oldIDs := map[string]bool{}
+	policyChanged := false
 	for _, m := range old {
 		oldIDs[m.ID] = true
+		if current, ok := byID[m.ID]; ok && (v.RecencyWeighted && m.AddedAt != current.AddedAt || (v.AvoidSameShow || v.MinOtherShows > 0) && m.Show != current.Show) {
+			policyChanged = true
+		}
 	}
 	added := false
 	for _, m := range items {
@@ -233,7 +248,7 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 		if !ok || m.Duration != p.Duration {
 			bad = true
 		}
-		if force || conf != st.Config || added || orderChanged {
+		if force || conf != st.Config || added || orderChanged || policyChanged {
 			bad = true
 		}
 		if bad {
@@ -302,7 +317,31 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	if revision == 0 {
 		revision = 1
 	}
-	generated, e := Generate(ctx, Request{v, items, from, through, seq, history, previous})
+	shows := []string{}
+	oldByID := map[string]Item{}
+	for _, m := range old {
+		oldByID[m.ID] = m
+	}
+	// Reconstruct cooldown from persisted history, including entries pruned by retention.
+	historyIDs := []string{}
+	for id := range history {
+		historyIDs = append(historyIDs, id)
+	}
+	sort.Slice(historyIDs, func(i, j int) bool {
+		a, b := historyIDs[i], historyIDs[j]
+		if history[a] == history[b] {
+			return a < b
+		}
+		return history[a] < history[b]
+	})
+	for _, id := range historyIDs {
+		m, ok := byID[id]
+		if !ok {
+			m = oldByID[id]
+		}
+		shows = rememberShow(shows, m.Show)
+	}
+	generated, e := Generate(ctx, Request{Settings: v, Items: items, From: from, Through: through, Sequence: seq, History: history, Previous: previous, Shows: shows})
 	if e != nil {
 		return out, e
 	}

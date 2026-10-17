@@ -383,6 +383,54 @@ function ScheduleDetail({ id, csrf }: { id: string; csrf: string }) {
             full cycle. Smart Random prefers eligible items aired least recently
             and relaxes repeat windows when necessary.
           </p>
+          {settings.mode === "SMART_RANDOM" && (
+            <fieldset>
+              <legend>Distribution</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!settings.recencyWeighted}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      recencyWeighted: e.target.checked,
+                    })
+                  }
+                />{" "}
+                Prefer recently added media among equally eligible items
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!settings.avoidSameShow}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      avoidSameShow: e.target.checked,
+                    })
+                  }
+                />{" "}
+                Avoid consecutive episodes from the same show
+              </label>
+              <label>
+                Other shows before returning (soft preference)
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  value={settings.minOtherShows ?? 0}
+                  onChange={(e) =>
+                    setSettings({ ...settings, minOtherShows: +e.target.value })
+                  }
+                />
+              </label>
+              <p>
+                Repeat windows take priority. Show separation relaxes when
+                alternatives are exhausted; every eligible episode can still
+                air.
+              </p>
+            </fieldset>
+          )}
           <label>
             <input
               type="checkbox"

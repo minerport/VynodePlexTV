@@ -12,6 +12,7 @@ type Request struct {
 	From, Through, Sequence int64
 	History                 map[string]int64
 	Previous                *Item
+	Shows                   []string
 }
 
 // Generate is pure apart from cancellation. History contains persisted air starts before From.
@@ -40,6 +41,7 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 		})
 	}
 	previous := r.Previous
+	shows := append([]string{}, r.Shows...)
 	at := r.From
 	seq := r.Sequence
 	for at < r.Through {
@@ -59,9 +61,13 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 		}
 		if r.Settings.Mode == "SMART_RANDOM" {
 			m, reason = smart(r.Items, history, previous, at, seq, r.Settings)
+			if r.Settings.RecencyWeighted || r.Settings.AvoidSameShow || r.Settings.MinOtherShows > 0 {
+				m, reason = distributed(r.Items, history, previous, shows, at, seq, r.Settings)
+			}
 		}
 		out = append(out, Entry{MediaID: m.ID, Start: at, End: at + m.Duration, Duration: m.Duration, Sequence: seq, Reason: reason})
 		history[m.ID] = at
+		shows = rememberShow(shows, m.Show)
 		previous = &m
 		at += m.Duration
 		seq++

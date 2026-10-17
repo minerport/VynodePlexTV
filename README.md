@@ -1,8 +1,22 @@
 # Afterglow TV
 
-A standalone, self-hosted, TV-first home for future Plex-powered linear channels. Independent of VyNode Media.
+A standalone, self-hosted, TV-first home for Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 3:** Persisted deterministic linear schedules over real local Plex inventory. Sequential, Random and Smart Random policies, stable anchors/seeds, repeat windows, repair/extension jobs and a cinematic scheduling studio build on the existing channel/rule engine. Plex integration, authentication and inventory safety remain intact. Playback and the production EPG are not implemented. No sample media is presented as real content.
+**Phase 4:** Watch persisted channels live through Plex, restart the current program, return to live, and switch channels without leaving the player. Separate Recently Added Movies and TV templates rotate local inventory with deterministic recency/show distribution. The scheduling studio, encrypted Plex connections and outage-safe inventory remain intact. The full EPG is a later phase. No sample media is presented as real content.
+
+## Recently Added and watching TV
+
+In **Channels**, choose **Create Recently Added Movies** or **Create Recently Added TV**. Creation is explicit and assigns the next free number. These are normal editable rule channels: rename, renumber, choose artwork/group, disable, or change the lookback in the channel editor. Default lookback is 30 elapsed days; suggestions include 7/14/30/60/90, with custom values from 1 to 3,650. TV matches episodes, never shows/seasons/movies. Empty windows leave the channel configured but empty.
+
+Both templates default to Smart Random with recency preference. TV additionally prefers one other show before returning. Schedule settings expose optional recency and show-separation controls; repeat windows take precedence, and separation relaxes when eligible alternatives run out. Every finite eligible inventory can cycle through. Five-minute maintenance repairs newly eligible/aged-out future membership while preserving history and the current program. No Plex connection is required for membership or scheduling.
+
+**Live TV** shows On Now and Recently Added networks. Choose **Watch Live** from home or a channel card. `#/watch/<channel-id>` opens the dedicated player. The backend uses the persisted current program and calculates the scheduled offset. **Watch From Beginning** starts the current item at zero; **Go Live** resolves the current broadcast again, including a new program if the boundary has passed. Pause/seek leaves the schedule running; a difference over ten seconds is shown as behind live. Live playback automatically tunes the next persisted program at the boundary. An early-ended/missing item displays a clear state rather than substituting unrelated content.
+
+Player keys: **↑/Page Up** next channel, **↓/Page Down** previous, **Space** play/pause, **←/→** focus controls, **Enter** activate, **Escape** exit. Type a channel number; it resolves after 1.2 seconds. Controls fade after 6.5 seconds and reappear with pointer activity or control navigation. Browsers may require pressing Play once to allow audio. Last-channel preference is stored locally per application user; Plex credentials never enter browser storage.
+
+Plex serves all media. Conservative MP4/H.264/AAC browser compatibility uses Direct Play; other supported single-part versions negotiate Plex's universal media decision then use HLS via the authenticated application proxy. Plex may copy streams or transcode according to its decision. No independent transcoder or direct filesystem access is used. Client resolution is currently capped at 1080p; advanced quality/version/subtitle selection and multipart titles are deferred. Transcoding availability depends on the Plex server/account. A retry resolves a fresh current program and session. An outage does not change inventory/schedules.
+
+Settings includes active application viewers. Sessions are independent by viewer/client, stop on exit/switch/logout, expire after 90 seconds without heartbeat (cleanup every 30 seconds), and are stopped on application restart. Recent stopped records are retained seven days for diagnostics. Media is streamed without disk caching; existing bounded artwork caching remains unchanged. Reverse proxies must permit long streaming responses, Range requests, and buffering settings appropriate for video.
 
 ## Docker quick start
 

@@ -48,11 +48,16 @@ type Node struct {
 	Children []Node          `json:"children,omitempty"`
 }
 type Source struct {
+	Recent     *RecentConfig     `json:"recent,omitempty"`
 	Type       string            `json:"type"`
 	Static     *StaticConfig     `json:"static,omitempty"`
 	Show       *ShowConfig       `json:"show,omitempty"`
 	Collection *CollectionConfig `json:"collection,omitempty"`
 	Rule       *Rule             `json:"rule,omitempty"`
+}
+type RecentConfig struct {
+	Kind string `json:"kind"`
+	Days int    `json:"days"`
 }
 type StaticConfig struct {
 	MediaIDs []string `json:"mediaIds"`

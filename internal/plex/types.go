@@ -76,6 +76,10 @@ type Stream struct {
 	Profile         string `json:"profile"`
 }
 type MediaVersion struct {
+	PartKey    string   `json:"-"`
+	MediaIndex int      `json:"-"`
+	PartIndex  int      `json:"-"`
+	PartCount  int      `json:"-"`
 	MediaID    string   `json:"mediaId"`
 	PartID     string   `json:"partId"`
 	Container  string   `json:"container"`

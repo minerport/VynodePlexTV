@@ -24,6 +24,43 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
+it("edits Recently Added lookback without exposing a contradictory rule", async () => {
+  vi.spyOn(channelAPI, "preview").mockResolvedValue({
+    count: 0,
+    items: [],
+    offset: 0,
+    limit: 24,
+    warnings: [],
+  });
+  vi.spyOn(channelAPI, "save").mockRejectedValue(new Error("saved test"));
+  const d = newDefinition("107");
+  d.name = "New episodes";
+  d.source = { ...newSource("RULE"), recent: { kind: "TV", days: 30 } };
+  render(
+    <ChannelEditor
+      initial={d}
+      groups={[]}
+      fields={fields}
+      csrf="test"
+      onSaved={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText(/Lookback window/), {
+    target: { value: "43" },
+  });
+  expect(screen.queryByLabelText("Group logic")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Save channel" }));
+  await waitFor(() =>
+    expect(channelAPI.save).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        source: expect.objectContaining({ recent: { kind: "TV", days: 43 } }),
+      }),
+      "test",
+    ),
+  );
+});
 const fields: Field[] = [
   {
     name: "media_type",

@@ -38,6 +38,9 @@ func hash(v any) string {
 }
 
 type Settings struct {
+	RecencyWeighted    bool   `json:"recencyWeighted"`
+	AvoidSameShow      bool   `json:"avoidSameShow"`
+	MinOtherShows      int    `json:"minOtherShows"`
 	ChannelID          string `json:"channelId"`
 	Mode               string `json:"mode"`
 	Timezone           string `json:"timezone"`
@@ -56,6 +59,7 @@ type Item struct {
 	Type     string `json:"type"`
 	Show     string `json:"showId"`
 	Season   int    `json:"season"`
+	AddedAt  int64  `json:"addedAt,omitempty"`
 }
 type Entry struct {
 	ID        string `json:"id"`

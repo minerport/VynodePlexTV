@@ -29,6 +29,13 @@ func audit(ctx context.Context, tx *sql.Tx, actor, action, target, summary strin
 	return e
 }
 func (s *Service) ValidateSource(ctx context.Context, v Source) error {
+	if v.Recent != nil {
+		if v.Type != "RULE" || (v.Recent.Kind != "MOVIES" && v.Recent.Kind != "TV") || v.Recent.Days < 1 || v.Recent.Days > 3650 {
+			return invalid("source.recent", "Choose movies or TV and a lookback of 1–3650 days")
+		}
+		r := RecentRule(*v.Recent)
+		v.Rule = &r
+	}
 	n := 0
 	for _, on := range []bool{v.Static != nil, v.Show != nil, v.Collection != nil, v.Rule != nil} {
 		if on {
@@ -281,6 +288,10 @@ func (s *Service) Save(ctx context.Context, id string, d Definition, actor strin
 	return s.save(ctx, id, d, actor, "", "")
 }
 func (s *Service) save(ctx context.Context, id string, d Definition, actor, actionOverride, duplicateFrom string) (Channel, error) {
+	if d.Source.Recent != nil {
+		r := RecentRule(*d.Source.Recent)
+		d.Source.Rule = &r
+	}
 	if e := s.validate(ctx, &d); e != nil {
 		return Channel{}, e
 	}
@@ -338,10 +349,16 @@ func (s *Service) save(ctx context.Context, id string, d Definition, actor, acti
 	}
 	if created {
 		if duplicateFrom != "" {
-			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings SELECT ?,mode,timezone,anchor_ms,lower(hex(randomblob(16))),movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,unixepoch(),unixepoch() FROM channel_schedule_settings WHERE channel_id=?`, id, duplicateFrom)
+			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings SELECT ?,mode,timezone,anchor_ms,lower(hex(randomblob(16))),movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,unixepoch(),unixepoch(),recency_weighted,avoid_same_show,min_other_shows FROM channel_schedule_settings WHERE channel_id=?`, id, duplicateFrom)
 		} else {
 			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings(channel_id,mode,timezone,anchor_ms,seed,created_at,updated_at) SELECT ?,CASE WHEN ? IN('STATIC','SHOW') THEN 'SEQUENTIAL' ELSE 'SMART_RANDOM' END,timezone,?,lower(hex(randomblob(16))),unixepoch(),unixepoch() FROM app_settings WHERE id=1`, id, d.Source.Type, (stamp()-604800)*1000)
 		}
+		if e != nil {
+			return Channel{}, e
+		}
+	}
+	if created && duplicateFrom == "" && d.Source.Recent != nil {
+		_, e = tx.ExecContext(ctx, "UPDATE channel_schedule_settings SET recency_weighted=1,avoid_same_show=?,min_other_shows=? WHERE channel_id=?", d.Source.Recent.Kind == "TV", map[bool]int{true: 1, false: 0}[d.Source.Recent.Kind == "TV"], id)
 		if e != nil {
 			return Channel{}, e
 		}

@@ -60,6 +60,20 @@ func pageParams(r *http.Request) (int, int) {
 }
 func (a *API) channelRoutes(mux *http.ServeMux) {
 	s := channels.New(a.db, a.cfg.Dir)
+	mux.HandleFunc("POST /api/v1/channel-templates/recent", a.channelAdmin(func(w http.ResponseWriter, r *http.Request, u Session) {
+		var body struct {
+			Kind string `json:"kind"`
+		}
+		if !decodeChannel(w, r, &body) {
+			return
+		}
+		c, e := s.CreateRecent(r.Context(), body.Kind, u.User.ID)
+		if e != nil {
+			a.channelError(w, e)
+			return
+		}
+		reply(w, 201, c)
+	}))
 	mux.HandleFunc("GET /api/v1/channel-metadata/selected", a.channelAdmin(func(w http.ResponseWriter, r *http.Request, _ Session) {
 		v, e := s.Lookup(r.Context(), r.URL.Query().Get("field"), r.URL.Query().Get("value"))
 		if e != nil {
@@ -87,7 +101,12 @@ func (a *API) channelRoutes(mux *http.ServeMux) {
 			a.channelError(w, e)
 			return
 		}
-		reply(w, 200, map[string]any{"items": items, "more": more, "nextNumber": next})
+		kinds, e := s.RecentKinds(r.Context())
+		if e != nil {
+			a.channelError(w, e)
+			return
+		}
+		reply(w, 200, map[string]any{"items": items, "more": more, "nextNumber": next, "recentKinds": kinds})
 	}))
 	mux.HandleFunc("POST /api/v1/channels", a.channelAdmin(func(w http.ResponseWriter, r *http.Request, u Session) {
 		var d channels.Definition

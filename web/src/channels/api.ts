@@ -11,6 +11,7 @@ export interface Rule {
   root: RuleNode;
 }
 export interface Source {
+  recent?: { kind: "MOVIES" | "TV"; days: number };
   type: "STATIC" | "SHOW" | "COLLECTION" | "RULE";
   static?: { mediaIds: string[] };
   show?: {
@@ -160,7 +161,12 @@ export function definitionOf(c: Definition): Definition {
 }
 export const channelAPI = {
   list: (offset = 0, group = "") =>
-    request<{ items: Channel[]; more: boolean; nextNumber: string }>(
+    request<{
+      items: Channel[];
+      more: boolean;
+      nextNumber: string;
+      recentKinds?: string[];
+    }>(
       `/channels?offset=${offset}&limit=24&group=${encodeURIComponent(group)}`,
     ),
   get: (id: string) => request<Channel>(`/channels/${id}`),

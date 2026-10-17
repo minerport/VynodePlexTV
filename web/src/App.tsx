@@ -4,6 +4,8 @@ import {
   useRef,
   useState,
   type FormEvent,
+  lazy,
+  Suspense,
 } from "react";
 import {
   ArrowRight,
@@ -25,6 +27,10 @@ import { bootstrap, request, type Session, type Settings } from "./api";
 import { useTVFocus } from "./focus";
 import { PlexPage } from "./PlexPage";
 import { ChannelsPage } from "./channels/ChannelsPage";
+const Player = lazy(() =>
+  import("./playback/Player").then((m) => ({ default: m.Player })),
+);
+import { ViewerHome, ActiveViewers } from "./playback/ViewerHome";
 
 type Page = "live" | "guide" | "channels" | "plex" | "settings";
 const pages: { id: Page; name: string; icon: typeof Tv }[] = [
@@ -86,7 +92,7 @@ export function App() {
   }, []);
   if (state === "ready" && session)
     return (
-      <Shell
+      <ViewingShell
         session={session}
         onLogout={() => {
           setSession(null);
@@ -259,6 +265,36 @@ function AuthForm({
   );
 }
 
+function ViewingShell(props: { session: Session; onLogout: () => void }) {
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  if (hash.startsWith("#watch/")) {
+    const id = hash.slice(7);
+    return (
+      <Suspense
+        fallback={
+          <div className="tv-player" role="status">
+            Opening television…
+          </div>
+        }
+      >
+        <Player
+          channelId={id}
+          userId={props.session.user.id}
+          csrf={props.session.csrfToken}
+          onExit={() => {
+            window.location.hash = "live";
+          }}
+        />
+      </Suspense>
+    );
+  }
+  return <Shell {...props} />;
+}
 function Shell({
   session,
   onLogout,
@@ -348,13 +384,19 @@ function Shell({
           </div>
         )}
         {page === "live" ? (
-          <Live navigate={navigate} />
-        ) : page === "settings" ? (
-          <SettingsPage
-            settings={settings}
-            onSave={setSettings}
-            session={session}
+          <ViewerHome
+            userId={session.user.id}
+            fallback={<Live navigate={navigate} />}
           />
+        ) : page === "settings" ? (
+          <>
+            <SettingsPage
+              settings={settings}
+              onSave={setSettings}
+              session={session}
+            />
+            {session.user.role !== "USER" && <ActiveViewers />}
+          </>
         ) : page === "plex" ? (
           <PlexPage session={session} />
         ) : page === "channels" ? (

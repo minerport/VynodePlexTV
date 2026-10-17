@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.4.0
-  description: Self-hosted Plex inventory, virtual channel membership and persisted linear scheduling.
-    Administrative mutations require OWNER/ADMIN, configured Origin and X-CSRF-Token. Authenticated
-    users may read enabled-channel schedules. No playback or full EPG APIs.
+  version: 0.5.0
+  description: Self-hosted Plex inventory, channels, deterministic schedules, Recently Added templates
+    and authenticated linear playback. Administrative changes require OWNER/ADMIN. All mutations
+    require configured Origin and CSRF. Playback sessions and streams belong to the authenticated
+    viewer. No full EPG.
 servers:
   - url: /api/v1
 tags:
@@ -16,6 +17,7 @@ tags:
   - name: Jobs
   - name: Channels
   - name: Scheduling
+  - name: Playback
 paths:
   /health:
     get:
@@ -2028,7 +2030,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                moveTo: &a9
+                moveTo: &a12
                   type: string
                   nullable: true
                 ungroup: *a2
@@ -2506,6 +2508,481 @@ paths:
           description: Channel not found or not visible
         "422":
           description: Invalid settings, timestamp or interval
+  /channel-templates/recent:
+    post:
+      tags:
+        - Playback
+      summary: OWNER/ADMIN explicitly create editable Recently Added channel
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - MOVIES
+                    - TV
+              required:
+                - kind
+              additionalProperties: false
+  /on-now:
+    get:
+      tags:
+        - Playback
+      summary: Enabled visible channels ordered by number, with persisted current/next; local-only, up to
+        1000
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OnNow"
+                  serverTime: &a23
+                    type: integer
+                    format: int64
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+  /playback/tune:
+    post:
+      tags:
+        - Playback
+      summary: Tune current persisted program; optionally stop an owned previous session
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackTune"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channelId: &a9
+                  type: string
+                mode:
+                  type: string
+                  enum:
+                    - LIVE
+                    - FROM_BEGINNING
+                clientId:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                capabilities:
+                  $ref: "#/components/schemas/PlaybackCapabilities"
+                replaceSession: *a9
+              required:
+                - channelId
+                - mode
+                - clientId
+                - capabilities
+              additionalProperties: false
+  /playback/active:
+    get:
+      tags:
+        - Playback
+      summary: OWNER/ADMIN active application viewers, no upstream secrets
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActiveViewer"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+  /playback/{id}:
+    get:
+      tags:
+        - Playback
+      summary: Read owned active playback session
+      security:
+        - sessionCookie: []
+      parameters:
+        - &a10
+          name: id
+          in: path
+          required: true
+          schema: *a9
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackTune"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+  /playback/{id}/heartbeat:
+    post:
+      tags:
+        - Playback
+      summary: Report client position/state; server computes live mode and boundary transition
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackUpdate"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                positionMs:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                state:
+                  type: string
+                  enum:
+                    - PLAYING
+                    - PAUSED
+                    - ERROR
+                ended: &a11
+                  type: boolean
+              required:
+                - positionMs
+                - state
+              additionalProperties: false
+  /playback/{id}/seek:
+    post:
+      tags:
+        - Playback
+      summary: Report client position/state; server computes live mode and boundary transition
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackUpdate"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                positionMs:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                state:
+                  type: string
+                  enum:
+                    - PLAYING
+                    - PAUSED
+                    - ERROR
+                ended: *a11
+              required:
+                - positionMs
+                - state
+              additionalProperties: false
+  /playback/{id}/go-live:
+    post:
+      tags:
+        - Playback
+      summary: Replace owned session with fresh current program/live offset
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackTune"
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /playback/{id}/stop:
+    post:
+      tags:
+        - Playback
+      summary: Idempotently stop owned application and Plex session
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stopped: *a11
+        "400":
+          description: Invalid request
+        "401":
+          description: Login expired
+        "403":
+          description: Role or CSRF/Origin denied
+        "404":
+          description: Missing/disabled channel, no current program, or foreign/expired playback session
+        "409":
+          description: Program boundary crossed while resolving; retry
+        "502":
+          description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /playback/{id}/stream/{resource}:
+    get:
+      tags:
+        - Playback
+      summary: Owned registered stream resource; supports one byte range; playlists contain only opaque
+        application URLs
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - name: resource
+          in: path
+          required: true
+          schema: *a9
+        - name: Range
+          in: header
+          schema: *a9
+      responses:
+        "200":
+          description: Media or rewritten HLS playlist
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+            application/vnd.apple.mpegurl:
+              schema: *a9
+            video/mp2t:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Partial media; Content-Range supplied
+        "401":
+          description: Authentication expired
+        "404":
+          description: Foreign/expired session or unknown resource
+        "502":
+          description: Sanitized Plex failure
+  /watch/channels/{id}/artwork/{kind}:
+    get:
+      tags:
+        - Playback
+      summary: Authenticated visible-channel artwork, no token in browser
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - logo
+              - background
+      responses:
+        "200":
+          description: Proxied/cached image or channel fallback
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema: *a9
+        "401":
+          description: Authentication required
+        "404":
+          description: Unavailable or disabled channel/program
+  /watch/channels/{id}/programs/{program}/artwork:
+    get:
+      tags:
+        - Playback
+      summary: Authenticated visible-channel artwork, no token in browser
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a10
+        - name: program
+          in: path
+          required: true
+          schema: *a9
+      responses:
+        "200":
+          description: Proxied/cached image or channel fallback
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema: *a9
+        "401":
+          description: Authentication required
+        "404":
+          description: Unavailable or disabled channel/program
 components:
   securitySchemes:
     sessionCookie:
@@ -3216,6 +3693,8 @@ components:
                 - RULE
             rule:
               $ref: "#/components/schemas/ChannelRule"
+            recent:
+              $ref: "#/components/schemas/RecentTemplate"
           required:
             - type
             - rule
@@ -3229,39 +3708,39 @@ components:
             - AUTO
             - PLEX
             - UPLOAD
-        uploadId: *a9
+        uploadId: *a12
       required:
         - source
     ChannelDefinition:
       type: object
       additionalProperties: false
       properties:
-        number: &a10
+        number: &a13
           type: string
           pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
-        name: &a11
+        name: &a14
           type: string
           maxLength: 100
-        shortName: &a12
+        shortName: &a15
           type: string
           maxLength: 24
-        description: &a13
+        description: &a16
           type: string
           maxLength: 2000
-        groupId: *a9
+        groupId: *a12
         enabled: *a2
-        visibility: &a14
+        visibility: &a17
           type: string
           enum:
             - VISIBLE
             - HIDDEN
         sortOrder: *a5
-        logo: &a15
+        logo: &a18
           $ref: "#/components/schemas/ChannelAppearance"
-        background: &a16
+        background: &a19
           $ref: "#/components/schemas/ChannelAppearance"
-        artworkMediaId: *a9
-        source: &a17
+        artworkMediaId: *a12
+        source: &a20
           $ref: "#/components/schemas/ChannelSource"
       required:
         - number
@@ -3274,18 +3753,18 @@ components:
       type: object
       additionalProperties: false
       properties:
-        number: *a10
-        name: *a11
-        shortName: *a12
-        description: *a13
-        groupId: *a9
+        number: *a13
+        name: *a14
+        shortName: *a15
+        description: *a16
+        groupId: *a12
         enabled: *a2
-        visibility: *a14
+        visibility: *a17
         sortOrder: *a5
-        logo: *a15
-        background: *a16
-        artworkMediaId: *a9
-        source: *a17
+        logo: *a18
+        background: *a19
+        artworkMediaId: *a12
+        source: *a20
         id: *a1
         count: *a5
         warnings:
@@ -3412,7 +3891,7 @@ components:
         timezone:
           type: string
           description: IANA timezone
-        anchorMs: &a19
+        anchorMs: &a22
           type: integer
           format: int64
           description: UTC Unix milliseconds
@@ -3436,9 +3915,16 @@ components:
           type: integer
           minimum: 1
           maximum: 30
-        includeUnavailable: &a18
+        includeUnavailable: &a21
           type: boolean
-        enabled: *a18
+        enabled: *a21
+        recencyWeighted: *a11
+        avoidSameShow: *a11
+        minOtherShows:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10
       required:
         - mode
         - timezone
@@ -3457,8 +3943,8 @@ components:
         id: *a6
         channelId: *a6
         mediaId: *a6
-        start: *a19
-        end: *a19
+        start: *a22
+        end: *a22
         durationMs: *a7
         sequence: *a7
         revision: *a7
@@ -3471,7 +3957,7 @@ components:
         episode:
           type: integer
           nullable: true
-        available: *a18
+        available: *a21
         artwork:
           type: string
           description: Authenticated admin artwork proxy; never a Plex URL/token
@@ -3484,9 +3970,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScheduledProgram"
-        more: *a18
-        start: *a19
-        end: *a19
+        more: *a21
+        start: *a22
+        end: *a22
         timezone: *a6
     ScheduleStatus:
       type: object
@@ -3562,3 +4048,129 @@ components:
           format: int64
           description: UTC Unix milliseconds
           nullable: true
+    RecentTemplate:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - MOVIES
+            - TV
+        days:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 3650
+          default: 30
+      required:
+        - kind
+        - days
+      description: Canonical local available movie/episode rule within this elapsed-day lookback. Server
+        ignores contradictory rule JSON.
+    ViewerChannel:
+      type: object
+      properties:
+        id: *a9
+        number: *a9
+        name: *a9
+        logo: *a9
+        recentKind: *a9
+        timezone: *a9
+    PlaybackCapabilities:
+      type: object
+      properties:
+        clientType:
+          type: string
+          enum:
+            - browser
+        containers:
+          type: array
+          items: *a9
+        videoCodecs:
+          type: array
+          items: *a9
+        audioCodecs:
+          type: array
+          items: *a9
+        maxHeight: *a23
+        hls: *a11
+        forceTranscode: *a11
+      additionalProperties: false
+    OnNow:
+      type: object
+      properties:
+        channel:
+          $ref: "#/components/schemas/ViewerChannel"
+        program:
+          $ref: "#/components/schemas/ScheduledProgram"
+          nullable: true
+        next:
+          $ref: "#/components/schemas/ScheduledProgram"
+          nullable: true
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+    PlaybackTune:
+      type: object
+      properties:
+        id: *a9
+        channel:
+          $ref: "#/components/schemas/ViewerChannel"
+        program:
+          $ref: "#/components/schemas/ScheduledProgram"
+        next:
+          $ref: "#/components/schemas/ScheduledProgram"
+          nullable: true
+        mode:
+          type: string
+          enum:
+            - LIVE
+            - BEHIND_LIVE
+            - FROM_BEGINNING
+        state: *a9
+        serverTime:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+        liveOffsetMs: *a23
+        positionMs: *a23
+        durationMs: *a23
+        streamUrl:
+          type: string
+          description: Same-origin authenticated opaque proxy resource; never a Plex URL
+        mime: *a9
+        delivery:
+          type: string
+          enum:
+            - DIRECT_PLAY
+            - DIRECT_STREAM
+            - TRANSCODE
+            - PLEX_HLS
+        addedAt:
+          type: integer
+          format: int64
+          nullable: true
+          description: Source added timestamp, UTC Unix seconds
+    PlaybackUpdate:
+      type: object
+      properties:
+        serverTime: *a23
+        mode: *a9
+        liveOffsetMs: *a23
+        transition: *a11
+        ended: *a11
+        message: *a9
+    ActiveViewer:
+      type: object
+      properties:
+        id: *a9
+        user: *a9
+        channel: *a9
+        program: *a9
+        client: *a9
+        mode: *a9
+        state: *a9
+        delivery: *a9
+        started: *a23
+        lastSeen: *a23

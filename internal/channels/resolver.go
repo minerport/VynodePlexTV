@@ -6,11 +6,19 @@ import (
 )
 
 func (s *Service) sourcePredicate(ctx context.Context, source Source, include bool) (Predicate, string, error) {
+	if source.Recent != nil {
+		r := RecentRule(*source.Recent)
+		source.Rule = &r
+		include = false
+	}
 	if e := s.ValidateSource(ctx, source); e != nil {
 		return Predicate{}, "", e
 	}
 	p := Predicate{SQL: playableSQL}
 	order := "m.title COLLATE NOCASE,COALESCE(m.year,0),m.id"
+	if source.Recent != nil {
+		order = "m.added_at DESC,m.id"
+	}
 	if source.Show != nil && source.Show.ExcludeUnavailable != nil && !*source.Show.ExcludeUnavailable {
 		include = true
 	}

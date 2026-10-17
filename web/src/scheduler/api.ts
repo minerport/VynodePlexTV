@@ -1,5 +1,8 @@
 import { request } from "../api";
 export interface ScheduleSettings {
+  recencyWeighted?: boolean;
+  avoidSameShow?: boolean;
+  minOtherShows?: number;
   channelId: string;
   mode: string;
   timezone: string;

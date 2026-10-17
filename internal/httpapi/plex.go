@@ -6,11 +6,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"afterglow.local/tv/internal/playback"
 	"afterglow.local/tv/internal/plex"
 )
 
 // MountPlex adds only admin inventory operations. The provider never reaches HTTP handlers.
-func (a *API) MountPlex(service *plex.Service) { a.plex = service }
+func (a *API) MountPlex(service *plex.Service) {
+	a.plex = service
+	a.playback = playback.New(a.db, a.scheduler, service, a.log)
+}
+func (a *API) Playback() *playback.Service { return a.playback }
 func (a *API) admin(next func(http.ResponseWriter, *http.Request, Session)) http.HandlerFunc {
 	return a.auth(func(w http.ResponseWriter, r *http.Request, s Session) {
 		if s.User.Role != "OWNER" && s.User.Role != "ADMIN" {

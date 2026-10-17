@@ -66,6 +66,63 @@ func checkIntegrity(t *testing.T, s *Service, id string) {
 		t.Fatal(d, e)
 	}
 }
+func TestRecentMembershipRepairProtectsCurrent(t *testing.T) {
+	s, members, _ := serviceFixture(t)
+	ctx := context.Background()
+	// Membership uses the real inventory clock; scheduling clock is fixed for repeatability.
+	now := time.Now().Unix()
+	if _, e := s.db.Exec("UPDATE plex_media_items SET added_at=?", now); e != nil {
+		t.Fatal(e)
+	}
+	c, e := members.CreateRecent(ctx, "MOVIES", "owner")
+	if e != nil {
+		t.Fatal(e)
+	}
+	v, e := s.Settings(ctx, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	v.Anchor = s.Now().Add(-24 * time.Hour).UnixMilli()
+	if _, e = s.SaveSettings(ctx, c.ID, v, "owner"); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Repair(ctx, c.ID, ""); e != nil {
+		t.Fatal(e)
+	}
+	before := all(t, s, c.ID)
+	if _, e = s.db.Exec("UPDATE plex_media_items SET added_at=? WHERE id='d'", now-31*86400); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Repair(ctx, c.ID, ""); e != nil {
+		t.Fatal(e)
+	}
+	after := all(t, s, c.ID)
+	for i, p := range after {
+		if p.Start <= s.Now().UnixMilli() {
+			if !reflect.DeepEqual(p, before[i]) {
+				t.Fatal("history changed")
+			}
+		} else if p.MediaID == "d" {
+			t.Fatal("aged-out item in future")
+		}
+	}
+	if _, e = s.db.Exec("UPDATE plex_media_items SET added_at=? WHERE id='d'", now); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Repair(ctx, c.ID, ""); e != nil {
+		t.Fatal(e)
+	}
+	found := false
+	for _, p := range all(t, s, c.ID) {
+		if p.Start > s.Now().UnixMilli() && p.MediaID == "d" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("new eligible item starved")
+	}
+	checkIntegrity(t, s, c.ID)
+}
 func TestServicePersistenceBoundariesAndExtension(t *testing.T) {
 	ctx := context.Background()
 	s, _, id := serviceFixture(t)

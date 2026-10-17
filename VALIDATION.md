@@ -292,3 +292,115 @@ Reviewed scheduling paths for server-side RBAC, CSRF/origin protection, paramete
 The current resource limits and behavior are explicit in README: one worker/SQLite connection, 50,000 members, 100,000 generated entries/job, seven-day maximum media duration, 0–30 past/1–30 future days, and no restoration of pruned historical rows when past retention is increased. Very old anchors/extremely short clips may hit the bounded entry budget and fail atomically. Progress is indeterminate until commit; running cancellation is best-effort. Smart Random uses scheduled—not watched—history, oldest-first with deterministic tie preferences. Small libraries necessarily relax windows. Random uses repeated seeded cycles. User-facing artwork remains a later viewer integration. No playback/full EPG/blocks/interstitials were implemented.
 
 Final rescan check: real incremental Movie and TV jobs succeeded, processing **3,506** and **7,166** records respectively. Subsequent generation jobs preserved the recorded two-day timelines for all six channels byte-for-byte. This directly validates stable schedules through a real Plex rescan with unchanged schedule-relevant inventory.
+# Phase 3.1 validation — 2026-10-17
+
+Baseline `b63c502` was clean. A stopped-container `/config` archive and a consistent Phase 3 database snapshot were retained privately before migration 005. Existing backend tests and 24 frontend tests passed before implementation. Updated backend tests/vet/format checks pass, including lookback boundary/type isolation, canonical templates, distribution/coverage/continuation, relaxation, and aging/reappearance repair. Frontend: 25 tests pass; production build and lint pass.
+
+Real UI-created channels 107 Recently Added Movies and 108 Recently Added TV use the default 30-day window: **31 movies; 394 episodes across 33 shows**. Generated 285 movie programs and 688 TV programs, both beyond 14 future days. No crossover, gaps, overlaps, invalid durations, duplicate positions, or missing references. TV has 29 same-show adjacent pairs among 687 boundaries; separation is a preference subordinate to episode repeat eligibility, rather than a guarantee when unseen/eligible alternatives are exhausted.
+
+All eight channels retained identical sampled three-day future sequences after container restart and generation rerun. All six original fingerprints are identical. Snapshot held 2,099 programs (normal maintenance had extended the previously reported 2,097); 2,098 remain byte-identical and one legitimately aged outside seven-day retention. No baseline entry within retention was lost. All 10,672 inventory identities and availability values, owner, saved sessions/settings, encrypted credentials, five library selections, six original channels/sources, groups and static membership survived the upgrade.
+
+
+# Phase 4 validation — 2026-10-17
+
+Completed Phase 3.1 first, then linear playback. Version 0.5.0. Migration 005 adds opt-in recency/show-distribution settings; 006 adds application viewing sessions. Scheduling remains authoritative and Plex-specific transport stays behind the Plex adapter. No Phase 5 work was implemented.
+
+## Automated and build evidence
+
+- Backend: **60 top-level tests / 144 cases**, all passing; Go vet and gofmt passed.
+- Frontend: **35 tests**, all passing; ESLint, Prettier, TypeScript and production Vite build passed.
+- Existing Docker browser regression: **1 complete journey passed**, including owner authentication, remote navigation, Plex/channel/schedule administration and container persistence.
+- Production Go binary and Docker image built; actual Compose stack healthy, ready and serving version 0.5.0.
+- Dependency audit: zero npm vulnerabilities. Player/HLS is lazy-loaded; its 602 kB / 189 kB gzip chunk triggers Vite's advisory size warning.
+
+## Real browser playback
+
+Microsoft Edge, actual Plex media and decoded video frames were used, not mocked playback. Final-image observations:
+
+| Channel/program | Observed Plex delivery | Requested offset | Actual position / live position | Browser startup observation |
+|---|---|---:|---:|---:|
+| 101 / 10 Cloverfield Lane | Direct Stream via HLS | 5240.827 s | 5244.341 / 5245.016 s | 4.67 s |
+| 102 / Pay It Forward | Direct Stream via HLS | 263.583 s | 267.121 / 267.253 s | 4.40 s |
+| 103 / Dune | Transcode via HLS | 6524.072 s | 6529.114 / 6529.422 s | 5.90 s |
+
+Startup observations include a deliberate three-second decoded-playback observation interval; they are not precise time-to-first-frame benchmarks. Plex decision responses identify Direct Stream versus Transcode. A temporary static validation channel also decoded **Sing: Thriller** and **It Won't Hurt Too Much** using Direct Play MP4, then was deleted without changing inventory.
+
+Movie and episode Watch From Beginning requested zero and played at approximately 1.7 seconds after observation. Go Live returned within 0.38 seconds (movie) and 0.26 seconds (episode) of the current schedule. Five-channel switching covered Static, Show, Rule, Recently Added Movies and Recently Added TV with matching persisted programs and real frames. Numeric entry, arrow channel switching, pause/behind-live and Escape exit passed.
+
+The temporary channel's first slot ended at UTC epoch-ms 1792275672212. Automatic next-program tune occurred at 1792275672377: **165 ms after the boundary**, requesting 165 ms into the correct next persisted episode. Decoded frames confirmed transition. No timeline edits or unrelated replacement media were used.
+
+## Persistence, integrity, outage and performance
+
+Final comparison against the private Phase 3 snapshot: all **10,672 identities and availability values** preserved, along with owner/password hash, two existing login sessions, settings, encrypted Plex credential, five libraries, six original channel definitions/sources, four groups and five static members. Six migrations applied. All six original schedule fingerprints unchanged. Of 2,099 baseline program rows, 2,095 remained byte-identical at final verification; four legitimately expired under seven-day retention. **No baseline program within retention was lost.**
+
+Final inventory had **3,068 programs across eight channels** after routine retention. Zero gaps/overlaps, duration inconsistencies, duplicate sequence positions, missing media references or Recently Added movie/episode crossover. Recently Added validation: **31 movies**, **394 episodes / 33 shows**, 14+ days coverage, deterministic restart/rerun; 29 same-show adjacent pairs among 687 initial TV boundaries. Repeat eligibility takes priority and distribution relaxes safely for limited alternatives.
+
+Force-recreating the final container preserved all eight sampled future schedules byte-for-byte and cleared an intentionally active application viewing session. Real movie/episode playback subsequently succeeded with retained credentials. New anchors/settings/seeds/channel identities persist.
+
+A reversible application-only unreachable Plex address simulated outage; no external Plex service was stopped. All eight On Now entries and local schedule administration/generation remained available. Player showed a sanitized connection failure; restoring the stored address and pressing Retry resumed decoded video. Inventory availability stayed unchanged.
+
+Five tune API resolutions measured **1320, 54, 64, 65, 52 ms** (first cold request versus subsequent warm requests, including Plex negotiation). Ten local eight-channel On Now queries measured **8–12 ms**. These are local development observations, not load-test guarantees.
+
+## Security and limitations
+
+Session ownership, server-side viewer/admin authorization, CSRF/Origin validation, disabled-channel rejection, bounded upstream resources, Range handling, HLS URI allow-listing and token redaction have tests. Browser URLs contain opaque application resource IDs, never Plex tokens. Credentials remain encrypted and server-side. Repository scan against the actual decrypted Plex token and encryption-key encodings found no matches. Private databases, caches, credentials and diagnostics remain ignored. Validation login is revoked after use.
+
+During troubleshooting, an unrelated webhook API key from a Plex diagnostic log appeared in tool output. The user was informed that it should be rotated. It was not copied into source or this report. Subsequent diagnostics used specific whitelisted playback fields.
+
+Current limits: conservative single-part MP4/H.264/AAC Direct Play; otherwise Plex decision/HLS, max 1080p. Manual quality/version/subtitle selection and multipart playback are deferred. Browser autoplay may require Play. Native TV hardware, Safari, remote WAN behavior and household load testing were not validated. Repeat/show separation is a preference when windows cannot all be satisfied. Recently Added windows are rolling UTC durations. The full EPG, past-program catch-up browsing, mini-guide, favorites and richer TV browsing belong to Phase 5. No claim is made that every Plex codec/version can play.
+
+## Phase 4 changed files
+
+- `ARCHITECTURE.md`
+- `Dockerfile`
+- `IMPLEMENTATION_PLAN.md`
+- `README.md`
+- `VALIDATION.md`
+- `cmd/server/main.go`
+- `internal/channels/artwork.go`
+- `internal/channels/recent.go`
+- `internal/channels/recent_test.go`
+- `internal/channels/resolver.go`
+- `internal/channels/schedule.go`
+- `internal/channels/service.go`
+- `internal/channels/types.go`
+- `internal/database/database_test.go`
+- `internal/database/migrations/005_recent_channels.sql`
+- `internal/database/migrations/006_playback_sessions.sql`
+- `internal/httpapi/api.go`
+- `internal/httpapi/channels.go`
+- `internal/httpapi/playback.go`
+- `internal/httpapi/playback_test.go`
+- `internal/httpapi/plex.go`
+- `internal/playback/service.go`
+- `internal/playback/service_test.go`
+- `internal/playback/sessions.go`
+- `internal/playback/types.go`
+- `internal/plex/metadata.go`
+- `internal/plex/playback.go`
+- `internal/plex/playback_test.go`
+- `internal/plex/types.go`
+- `internal/scheduler/distribution.go`
+- `internal/scheduler/distribution_test.go`
+- `internal/scheduler/generator.go`
+- `internal/scheduler/service.go`
+- `internal/scheduler/service_test.go`
+- `internal/scheduler/types.go`
+- `openapi.yaml`
+- `scripts/update-playback-openapi.mjs`
+- `web/package-lock.json`
+- `web/package.json`
+- `web/src/App.tsx`
+- `web/src/channels/ChannelEditor.tsx`
+- `web/src/channels/ChannelsPage.tsx`
+- `web/src/channels/api.ts`
+- `web/src/channels/channels.test.tsx`
+- `web/src/playback/Player.tsx`
+- `web/src/playback/ViewerHome.tsx`
+- `web/src/playback/api.ts`
+- `web/src/playback/controller.ts`
+- `web/src/playback/playback.test.tsx`
+- `web/src/playback/player-ui.test.tsx`
+- `web/src/playback/player.css`
+- `web/src/scheduler/ScheduleAdmin.tsx`
+- `web/src/scheduler/api.ts`

@@ -329,7 +329,51 @@ export function ChannelEditor({
                   }
                 />
               )}
-              {draft.source.rule && (
+              {draft.source.recent && (
+                <div className="channel-panel">
+                  <h3>
+                    Recently Added{" "}
+                    {draft.source.recent.kind === "MOVIES" ? "Movies" : "TV"}
+                  </h3>
+                  <p>
+                    Local{" "}
+                    {draft.source.recent.kind === "MOVIES"
+                      ? "movies"
+                      : "episodes"}{" "}
+                    added inside this rolling window. Unavailable media is
+                    excluded.
+                  </p>
+                  <label>
+                    Lookback window (days)
+                    <input
+                      type="number"
+                      min="1"
+                      max="3650"
+                      list="recent-windows"
+                      value={draft.source.recent.days}
+                      onChange={(e) =>
+                        source({
+                          ...draft.source,
+                          recent: {
+                            ...draft.source.recent!,
+                            days: +e.target.value,
+                          },
+                        })
+                      }
+                    />
+                    <datalist id="recent-windows">
+                      {[7, 14, 30, 60, 90].map((n) => (
+                        <option value={n} key={n} />
+                      ))}
+                    </datalist>
+                  </label>
+                  <p>
+                    Use Scheduling settings to adjust repeat windows and show
+                    separation. Save this source first.
+                  </p>
+                </div>
+              )}
+              {draft.source.rule && !draft.source.recent && (
                 <RuleBuilder
                   rule={draft.source.rule}
                   fields={fields}

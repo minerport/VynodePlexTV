@@ -21,12 +21,14 @@ import (
 
 	"afterglow.local/tv/internal/channels"
 	"afterglow.local/tv/internal/config"
+	"afterglow.local/tv/internal/playback"
 	"afterglow.local/tv/internal/plex"
 	"afterglow.local/tv/internal/scheduler"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type API struct {
+	playback  *playback.Service
 	scheduler *scheduler.Service
 	db        *sql.DB
 	cfg       config.Config
@@ -84,6 +86,7 @@ func (a *API) Handler() http.Handler {
 	a.plexRoutes(mux)
 	a.channelRoutes(mux)
 	a.scheduleRoutes(mux)
+	a.playbackRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +94,7 @@ func (a *API) Handler() http.Handler {
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 		if a.cfg.Secure {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		}
@@ -272,6 +275,12 @@ func (a *API) logout(w http.ResponseWriter, r *http.Request, s Session) {
 	if err != nil {
 		problem(w, 401, "Sign in to continue")
 		return
+	}
+	if a.playback != nil {
+		if err = a.playback.StopAuth(r.Context(), digest(cookie.Value)); err != nil {
+			a.fail(w, err)
+			return
+		}
 	}
 	if _, err = a.db.ExecContext(r.Context(), "DELETE FROM sessions WHERE token_hash=?", digest(cookie.Value)); err != nil {
 		a.fail(w, err)

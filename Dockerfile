@@ -16,7 +16,7 @@ FROM backend-base AS backend-test
 RUN go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
 
 FROM backend-base AS backend
-ARG VERSION=0.4.0
+ARG VERSION=0.5.0
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /server ./cmd/server
 
 FROM alpine:3.23 AS runtime

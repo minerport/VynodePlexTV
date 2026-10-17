@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Session } from "../api";
+import { request, type Session } from "../api";
 import {
   channelAPI,
   definitionOf,
@@ -15,15 +15,23 @@ import { GroupManager } from "./GroupManager";
 import { Preview } from "./Preview";
 import "./channels.css";
 import { ScheduleAdmin } from "../scheduler/ScheduleAdmin";
+import { watch } from "../playback/api";
 export function ChannelsPage({ session }: { session: Session }) {
   if (session.user.role === "USER")
     return (
       <section className="destination">
         <h1>Your channel collection</h1>
         <p>
-          An administrator manages your channels. Live programming is coming in
-          a later phase.
+          An administrator manages your channels. Open Live TV to see what is on
+          and start watching.
         </p>
+        <button
+          onClick={() => {
+            window.location.hash = "live";
+          }}
+        >
+          Open Live TV
+        </button>
       </section>
     );
   return <ChannelAdmin csrf={session.csrfToken} />;
@@ -32,6 +40,7 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
   const [schedule, setSchedule] = useState<string | null>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [recentKinds, setRecentKinds] = useState<string[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
   const [offset, setOffset] = useState(0);
@@ -61,6 +70,7 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
       channelAPI.fields(),
     ]);
     setChannels(list.items);
+    setRecentKinds(list.recentKinds ?? []);
     setMore(list.more);
     setNext(list.nextNumber);
     setGroups(g);
@@ -123,6 +133,28 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
         </p>
       </div>
       <div className="channel-actions">
+        {(["MOVIES", "TV"] as const)
+          .filter((kind) => !recentKinds.includes(kind))
+          .map((kind) => (
+            <button
+              key={kind}
+              disabled={busy}
+              onClick={() =>
+                void run(
+                  () =>
+                    request(
+                      "/channel-templates/recent",
+                      "POST",
+                      { kind },
+                      csrf,
+                    ),
+                  "Recently Added channel created. Open Schedule to inspect programming.",
+                )
+              }
+            >
+              Create Recently Added {kind === "MOVIES" ? "Movies" : "TV"}
+            </button>
+          ))}
         <button
           className="primary"
           ref={createButton}
@@ -273,6 +305,11 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
                   </button>
                   <button onClick={() => setPreview(c)}>Preview</button>
                   <button onClick={() => setSchedule(c.id)}>Schedule</button>
+                  {c.enabled && c.visibility === "VISIBLE" && (
+                    <button className="primary" onClick={() => watch(c.id)}>
+                      Watch Live
+                    </button>
+                  )}
                   <button
                     disabled={busy}
                     onClick={() =>

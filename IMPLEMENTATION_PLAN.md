@@ -62,3 +62,15 @@ Implemented and validated migration 004, deterministic policies, persisted UTC-m
 ### Next phase — explicit authorization required
 
 Phase 4: **Linear Playback and Live Channel Tuning**. Reuse persisted program-at-now/current/next queries; resolve the referenced local media through the Plex service, compute live offsets, orchestrate supported Plex URLs/sessions, handle browser capabilities, add Watch Live/Watch From Beginning, player/current-next overlay, channel switching and explicit unavailable/offline/transcode failure states. Preserve the scheduler's existing current/past stability contract. No Phase 4 code has been started.
+
+## Phase 3.1 and Phase 4 — authorized continuation
+
+Inspect clean b63c502 and preserve existing schedules/inventory. First add explicit Recently Added system templates backed by ordinary persisted RULE channels with typed recent-window configuration, and opt-in generic Smart Random recency/show-distribution controls. Keep default-off policy extensions fingerprint-compatible with Phase 3. Validate distinct movie/episode membership, real counts, horizons, integrity, outage and restart before playback work.
+
+Then add an isolated playback service consuming persisted scheduler queries and a Plex transport adapter. Use authenticated same-origin streaming so Plex tokens remain server-side; support direct compatible files and Plex HLS where needed. Add per-user/client sessions, lifecycle/heartbeats, live/start/go-live offsets, full-screen viewer, boundary transitions, channel switching, local On Now metadata, admin active viewers, tests and real browser validation. Do not implement the full EPG, mini-guide, external IPTV, recording, recommendations or interstitials. Add new migrations without changing applied files. Retain the Phase 3 image/config backup until validation completes.
+
+## Phase 4 completed
+
+Phase 3.1 and Phase 4 are implemented and validated; see VALIDATION.md for real inventory, decoded playback, offsets, transition, outage and restart evidence. The earlier Phase 3 next-phase paragraph is historical. No Phase 5 implementation has started.
+
+Next authorized scope should be **Phase 5: Full Electronic Program Guide and TV Browsing Experience**: virtualized channel/time grid, current-time line, past/future browsing, program details, tune/catch-up actions, remote focus, groups/favorites and mini-guide foundation. Preserve persisted schedule authority and authenticated playback proxy. Await explicit instruction.

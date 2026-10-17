@@ -1,0 +1,191 @@
+.tv-player {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  z-index: 100;
+  overflow: hidden;
+}
+.tv-player video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.player-chrome {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s;
+  background: linear-gradient(transparent 20%, #080610e8 100%);
+}
+.player-chrome.shown {
+  opacity: 1;
+  pointer-events: auto;
+}
+.player-exit {
+  position: absolute;
+  top: 3vh;
+  left: 3vw;
+  background: #17121dcc;
+}
+.channel-overlay {
+  position: absolute;
+  bottom: 3vh;
+  left: 5vw;
+  right: 5vw;
+  max-width: 1500px;
+}
+.channel-overlay h1 {
+  font-size: clamp(26px, 3.5vw, 54px);
+  margin: 12px 0;
+}
+.channel-overlay p {
+  margin: 8px 0;
+  font-size: clamp(16px, 1.5vw, 24px);
+}
+.channel-ident {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.overlay-logo {
+  width: 76px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.channel-ident > span {
+  font-size: 48px;
+  font-weight: 700;
+  color: #d9b8f5;
+}
+.channel-ident small {
+  color: #d9b8f5;
+  letter-spacing: 2px;
+}
+.channel-overlay progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #d9b8f5;
+}
+.player-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.player-controls button {
+  background: #292032d9;
+  min-height: 48px;
+}
+.player-status {
+  position: absolute;
+  inset: 22% 20% auto;
+  text-align: center;
+  padding: 28px;
+  background: #16121deb;
+  border: 1px solid #ffffff25;
+  border-radius: 22px;
+  backdrop-filter: blur(18px);
+  z-index: 2;
+}
+.channel-digits {
+  position: absolute;
+  right: 5vw;
+  top: 5vh;
+  font-size: 64px;
+  background: #16121ddd;
+  padding: 24px;
+  border-radius: 18px;
+}
+.player-seek {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 700px;
+}
+.player-seek input {
+  flex: 1;
+}
+.on-now-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 22px;
+}
+.on-now-card {
+  overflow: hidden;
+  border: 1px solid #ffffff16;
+  border-radius: 20px;
+  background: #19151f;
+  padding: 18px;
+}
+.on-now-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.on-now-card h3 {
+  font-size: 21px;
+  margin: 14px 0 6px;
+}
+.on-now-card progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #cfb1ee;
+}
+.on-now-card button {
+  margin: 12px 8px 0 0;
+}
+.viewer-home {
+  padding: 30px 0;
+}
+.viewer-home h1 {
+  font-size: clamp(38px, 4.5vw, 70px);
+}
+.viewer-home > p {
+  color: #b9afc5;
+  font-size: 20px;
+}
+.on-now-heading {
+  margin: 38px 0 20px;
+}
+.active-viewers {
+  margin: 30px 0;
+  padding: 24px;
+  background: #17131d;
+  border-radius: 20px;
+}
+.active-viewers li {
+  margin: 14px 0;
+}
+@media (max-width: 700px) {
+  .channel-overlay {
+    left: 4vw;
+    right: 4vw;
+  }
+  .player-controls {
+    gap: 5px;
+  }
+  .player-controls button {
+    font-size: 12px;
+    padding: 8px;
+    min-height: 40px;
+  }
+  .channel-ident > span {
+    font-size: 32px;
+  }
+  .channel-overlay h1 {
+    font-size: 25px;
+  }
+  .player-status {
+    inset: 10% 5% auto;
+  }
+  .channel-overlay > small {
+    display: none;
+  }
+  .on-now-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}

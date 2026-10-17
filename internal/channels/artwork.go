@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
@@ -154,6 +155,15 @@ func (s *Service) ChannelArtwork(ctx context.Context, id, kind string) (Artwork,
 		preview, e := s.Preview(ctx, PreviewRequest{Source: c.Source, Limit: 1})
 		if e == nil && len(preview.Items) > 0 {
 			media = preview.Items[0].ID
+			if c.Source.Recent != nil && c.Source.Recent.Kind == "TV" {
+				var showID string
+				err := s.db.QueryRowContext(ctx, `SELECT show.id FROM plex_media_items ep JOIN plex_media_items show ON show.plex_server_id=ep.plex_server_id AND show.plex_rating_key=ep.grandparent_rating_key WHERE ep.id=?`, media).Scan(&showID)
+				if err == nil {
+					media = showID
+				} else if err != sql.ErrNoRows {
+					return Artwork{}, err
+				}
+			}
 		}
 	}
 	name := c.ShortName

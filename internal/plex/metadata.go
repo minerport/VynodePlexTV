@@ -85,6 +85,7 @@ type xmlMedia struct {
 	Parts      []xmlPart `xml:"Part"`
 }
 type xmlPart struct {
+	Key       string      `xml:"key,attr"`
 	ID        string      `xml:"id,attr"`
 	File      string      `xml:"file,attr"`
 	Size      *int64      `xml:"size,attr"`
@@ -140,8 +141,8 @@ func (n xmlItem) model() MediaItem {
 		}
 		m.ExternalIDs = append(m.ExternalIDs, ExternalID{Provider: provider, Value: value})
 	}
-	for _, media := range n.Media {
-		for _, part := range media.Parts {
+	for mi, media := range n.Media {
+		for pi, part := range media.Parts {
 			container := part.Container
 			if container == "" {
 				container = media.Container
@@ -151,6 +152,10 @@ func (n xmlItem) model() MediaItem {
 				duration = media.Duration
 			}
 			v := MediaVersion{MediaID: media.ID, PartID: part.ID, Container: container, VideoCodec: media.VideoCodec, AudioCodec: media.AudioCodec, Resolution: media.Resolution, Width: media.Width, Height: media.Height, Bitrate: media.Bitrate, DurationMS: duration, File: part.File, Size: part.Size, Optimized: media.Optimized}
+			v.PartKey = part.Key
+			v.MediaIndex = mi
+			v.PartIndex = pi
+			v.PartCount = len(media.Parts)
 			for _, s := range part.Streams {
 				v.Streams = append(v.Streams, Stream{ID: s.ID, Type: s.Type, Codec: s.Codec, Language: s.Language, LanguageCode: s.LanguageCode, Title: s.Title, Default: s.Default, Forced: s.Forced, HearingImpaired: s.HearingImpaired, Channels: s.Channels, Width: s.Width, Height: s.Height, Profile: s.Profile})
 			}
