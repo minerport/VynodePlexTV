@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { channelJourney } from "./channel-journey";
 
 test("complete owner journey, remote navigation, logout, and container persistence", async ({
   page,
@@ -47,7 +48,7 @@ test("complete owner journey, remote navigation, logout, and container persisten
   ).toHaveAttribute("aria-current", "page");
   await nav.getByRole("link", { name: "Channels", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Your channel collection is waiting" }),
+    page.getByRole("heading", { name: "Your first channel starts here." }),
   ).toBeVisible();
   await nav.getByRole("link", { name: "Plex Setup", exact: true }).click();
   await expect(
@@ -220,6 +221,8 @@ test("complete owner journey, remote navigation, logout, and container persisten
         .evaluate((img: HTMLImageElement) => img.naturalWidth),
     )
     .toBeGreaterThan(0);
+  await nav.getByRole("link", { name: "Settings", exact: true }).click();
+  await channelJourney(page);
   await nav.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(

@@ -36,3 +36,17 @@ Phase 2 remains unstarted. Its exact recommended scope is Virtual Channels and R
 9. Multiuser/polish: user administration, mapping, kids restrictions, analytics and performance.
 
 Each phase requires tests, formatting/linting and real functional verification. Missing external credentials or devices must be reported as unvalidated, never replaced by production mocks.
+
+## Phase 2 — authorized channel membership implementation
+
+Phase 1 baseline 36ed7266541cc9bc236c13732c06a319df94309e was clean; backend/frontend tests and frontend lint/format/build were checked before implementation. Add migration 003 and a separate internal/channels package without rewriting Plex sync. Domain models, a versioned typed expression tree, strict validator/compiler, paginated resolver/count service, metadata selectors, channel/group persistence and artwork upload handling are separate from HTTP and React. Default resolution includes playable movies/episodes in selected/present libraries with available media; offline server status does not change eligibility. Static references survive unavailability. Episode metadata rules may inherit show relationships, documented and tested explicitly.
+
+UI work replaces only the Channels placeholder: channel cards, source-specific editor, nested rule builder, paginated pickers/previews, groups and artwork. Reuse session/Origin/CSRF and focus behavior. Back up Phase 1 config/image, test migration and all existing behavior, validate representative channels against actual synchronized inventory, measure queries, test offline resolution and Docker persistence, document and commit. Do not implement schedules, EPG or playback.
+
+### Phase 2 implementation status
+
+Implemented migration 003, the isolated local channel service, typed static/show/collection/rule sources, bounded visual rule editing, indexed previews/counts, groups, duplication, enable/disable, artwork uploads/fallbacks, authorization and transactional audit records. Preserved Phase 0/1 behavior. Six real-inventory channels were created and browser-tested; independent SQL verified counts. Container restart, database upgrade and simulated Plex outage/recovery passed. Final commands and evidence are recorded in VALIDATION.md.
+
+### Next authorized boundary
+
+Phase 3 is **not started**. Recommended scope: deterministic linear schedule generation, persisted program entries, sequential/random/smart-random order, no-repeat windows, configurable horizon, stable seeds/revisions, idempotent extension jobs, block-scheduling foundation and schedule preview. Keep actual playback/EPG/channel surfing outside that phase unless separately authorized.

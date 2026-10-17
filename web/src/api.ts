@@ -11,6 +11,7 @@ export class APIError extends Error {
   constructor(
     public status: number,
     message: string,
+    public issues: { path: string; message: string }[] = [],
   ) {
     super(message);
   }
@@ -60,6 +61,7 @@ export async function request<T>(
     throw new APIError(
       response.status,
       data.error || "Unable to complete this request.",
+      data.issues ?? [],
     );
   }
   return data as T;

@@ -1,9 +1,10 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.2.0
-  description: Self-hosted Plex inventory. Plex, media and jobs routes require OWNER or ADMIN. Mutations require
-    the exact configured Origin and session X-CSRF-Token. No playback or scheduling APIs are implemented.
+  version: 0.3.0
+  description: Self-hosted Plex inventory and virtual channel membership. Channel, Plex, media and
+    jobs routes require OWNER or ADMIN. Mutations require configured Origin and session
+    X-CSRF-Token. No scheduling, EPG or playback APIs.
 servers:
   - url: /api/v1
 tags:
@@ -13,6 +14,7 @@ tags:
   - name: Plex
   - name: Media
   - name: Jobs
+  - name: Channels
 paths:
   /health:
     get:
@@ -259,8 +261,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
     post:
       tags:
         - Plex
@@ -292,8 +294,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -332,8 +334,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -375,8 +377,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
     patch:
       tags:
         - Plex
@@ -413,8 +415,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -457,8 +459,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/servers/{id}/test:
     post:
       tags:
@@ -496,8 +498,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/servers/{id}/discover:
     post:
       tags:
@@ -535,8 +537,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/servers/{id}/libraries:
     get:
       tags:
@@ -574,8 +576,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/libraries/{id}:
     patch:
       tags:
@@ -613,8 +615,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -664,8 +666,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -710,8 +712,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
     put:
       tags:
         - Plex
@@ -743,8 +745,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -783,8 +785,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /jobs/{id}:
     get:
       tags:
@@ -820,8 +822,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /jobs/{id}/cancel:
     post:
       tags:
@@ -859,8 +861,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /media:
     get:
       tags:
@@ -936,8 +938,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /media/{id}:
     get:
       tags:
@@ -973,8 +975,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /media/{id}/artwork/{kind}:
     get:
       tags:
@@ -1033,8 +1035,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/link:
     post:
       tags:
@@ -1067,8 +1069,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/link/{id}/poll:
     post:
       tags:
@@ -1106,8 +1108,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/link/{id}:
     delete:
       tags:
@@ -1145,8 +1147,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
   /plex/link/{id}/connect:
     post:
       tags:
@@ -1184,8 +1186,8 @@ paths:
           $ref: "#/components/responses/Error"
         "502":
           $ref: "#/components/responses/Error"
-          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
-            application session expiration).
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct
+            from application session expiration).
       requestBody:
         required: true
         content:
@@ -1201,6 +1203,990 @@ paths:
                   type: string
                 uri:
                   type: string
+  /channels:
+    get:
+      tags:
+        - Channels
+      summary: List channels and counts from local inventory
+      security:
+        - sessionCookie: []
+      parameters:
+        - &a3
+          name: offset
+          in: query
+          schema: &a5
+            type: integer
+        - &a4
+          name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+        - name: group
+          in: query
+          schema:
+            type: string
+            description: Group ID or ungrouped; omitted means all
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Channel"
+                  more: &a2
+                    type: boolean
+                  nextNumber: &a1
+                    type: string
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+    post:
+      tags:
+        - Channels
+      summary: Create channel
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelDefinition"
+  /channels/{id}:
+    get:
+      tags:
+        - Channels
+      summary: Read channel
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+    patch:
+      tags:
+        - Channels
+      summary: Replace complete editable channel definition
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelDefinition"
+    delete:
+      tags:
+        - Channels
+      summary: Delete channel, retaining Plex inventory
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  deleted: *a2
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channels/{id}/enabled:
+    patch:
+      tags:
+        - Channels
+      summary: Set enabled state
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  saved: *a2
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                enabled: *a2
+              required:
+                - enabled
+  /channels/{id}/duplicate:
+    post:
+      tags:
+        - Channels
+      summary: Duplicate source, artwork and group with a new identity and number
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channels/{id}/media:
+    get:
+      tags:
+        - Channels
+      summary: Resolve deterministic membership, not a schedule
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - *a3
+        - *a4
+        - name: includeUnavailable
+          in: query
+          schema: *a2
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPreview"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channels/{id}/media/count:
+    get:
+      tags:
+        - Channels
+      summary: Count playable matching inventory
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  count: *a5
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channel-preview:
+    post:
+      tags:
+        - Channels
+      summary: Preview any source without saving
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPreview"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelPreviewRequest"
+  /channel-rules/validate:
+    post:
+      tags:
+        - Channels
+      summary: Validate a versioned rule
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  valid: *a2
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelRule"
+  /channel-rules/preview:
+    post:
+      tags:
+        - Channels
+      summary: Preview rule matches
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPreview"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                rule:
+                  $ref: "#/components/schemas/ChannelRule"
+                offset: *a5
+                limit: *a5
+                includeUnavailable: *a2
+              required:
+                - rule
+  /channel-rules/fields:
+    get:
+      tags:
+        - Channels
+      summary: Discover supported rule fields and operators
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelField"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channel-metadata/{field}:
+    get:
+      tags:
+        - Channels
+      summary: Search bounded metadata options with source context
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: field
+          in: path
+          required: true
+          schema: *a1
+        - name: q
+          in: query
+          schema: *a1
+        - name: parent
+          in: query
+          schema:
+            type: string
+            description: Local show ID for season selection
+        - *a3
+        - *a4
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChannelMetadata"
+                  more: *a2
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channel-metadata/selected:
+    get:
+      tags:
+        - Channels
+      summary: Resolve one saved metadata selection
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: field
+          in: query
+          schema: *a1
+        - name: value
+          in: query
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelMetadata"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channel-groups:
+    get:
+      tags:
+        - Channels
+      summary: List groups in display order
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChannelGroup"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+    post:
+      tags:
+        - Channels
+      summary: Create group
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelGroup"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelGroup"
+  /channel-groups/{id}:
+    patch:
+      tags:
+        - Channels
+      summary: Edit group and sort order
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelGroup"
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelGroup"
+    delete:
+      tags:
+        - Channels
+      summary: Delete group; explicitly move or ungroup contained channels
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  deleted: *a2
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                moveTo: &a6
+                  type: string
+                  nullable: true
+                ungroup: *a2
+              required: []
+  /channel-artwork:
+    post:
+      tags:
+        - Channels
+      summary: Upload PNG/JPEG/WebP, at most 8 MiB, 8192 pixels per edge and 36 megapixels
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: *a1
+        - name: Origin
+          in: header
+          required: true
+          schema: *a1
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  id: *a1
+                  contentType: *a1
+                  width: *a5
+                  height: *a5
+                required: []
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+  /channel-artwork/{id}:
+    get:
+      tags:
+        - Channels
+      summary: Authenticated channel artwork; kind is logo or background
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
+  /channels/{id}/artwork/{kind}:
+    get:
+      tags:
+        - Channels
+      summary: Authenticated channel artwork; kind is logo or background
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a1
+        - name: kind
+          in: path
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator role, Origin or CSRF rejected
+        "404":
+          description: Not found
+        "409":
+          description: Duplicate number or slug
+        "422":
+          description: Invalid source or structured rule issues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelError"
 components:
   securitySchemes:
     sessionCookie:
@@ -1374,7 +2360,8 @@ components:
       properties:
         baseUrl:
           type: string
-          description: HTTP(S) URL; no userinfo, query, fragment, or relative path segments. Explicit ports are preserved.
+          description: HTTP(S) URL; no userinfo, query, fragment, or relative path segments. Explicit ports
+            are preserved.
         token:
           type: string
           format: password
@@ -1747,3 +2734,349 @@ components:
                       type: boolean
                     protocol:
                       type: string
+    ChannelIssue:
+      type: object
+      additionalProperties: false
+      properties:
+        path: *a1
+        message: *a1
+      required: []
+    ChannelError:
+      type: object
+      additionalProperties: false
+      properties:
+        code: *a1
+        error: *a1
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelIssue"
+      required: []
+    RuleNode:
+      description: Recursive version 1 condition/group. Maximum 8 levels, 64 nodes. Groups have AND/OR/NOT
+        and children; NOT exactly one child. Conditions have field/operator/value; boolean operators
+        omit value. SQL identifiers are never accepted.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - group
+            operator:
+              type: string
+              enum:
+                - AND
+                - OR
+                - NOT
+            children:
+              type: array
+              items:
+                $ref: "#/components/schemas/RuleNode"
+              minItems: 1
+              maxItems: 64
+          required:
+            - type
+            - operator
+            - children
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - condition
+            field: *a1
+            operator: *a1
+            value:
+              oneOf:
+                - *a1
+                - type: number
+                - type: array
+                  items: *a1
+                - type: array
+                  items:
+                    type: number
+          required:
+            - type
+            - field
+            - operator
+    ChannelRule:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+            - 1
+        root:
+          $ref: "#/components/schemas/RuleNode"
+      required:
+        - version
+        - root
+    ChannelSource:
+      description: Exactly one configuration matching type. Static IDs reference playable inventory and
+        preserve order. Collection ID is entityId@libraryId, from metadata discovery.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - STATIC
+            static:
+              type: object
+              additionalProperties: false
+              properties:
+                mediaIds:
+                  type: array
+                  items: *a1
+                  maxItems: 1000
+                  uniqueItems: true
+              required:
+                - mediaIds
+          required:
+            - type
+            - static
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - SHOW
+            show:
+              type: object
+              additionalProperties: false
+              properties:
+                showId: *a1
+                episodeScope:
+                  type: string
+                  enum:
+                    - ALL
+                    - SELECTED_SEASONS
+                seasonIds:
+                  type: array
+                  items: *a1
+                  maxItems: 200
+                includeSpecials: *a2
+                excludeUnavailable:
+                  type: boolean
+                  default: true
+              required:
+                - showId
+                - episodeScope
+          required:
+            - type
+            - show
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - COLLECTION
+            collection:
+              type: object
+              additionalProperties: false
+              properties:
+                collectionId: *a1
+              required:
+                - collectionId
+          required:
+            - type
+            - collection
+        - type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              enum:
+                - RULE
+            rule:
+              $ref: "#/components/schemas/ChannelRule"
+          required:
+            - type
+            - rule
+    ChannelAppearance:
+      type: object
+      additionalProperties: false
+      properties:
+        source:
+          type: string
+          enum:
+            - AUTO
+            - PLEX
+            - UPLOAD
+        uploadId: *a6
+      required:
+        - source
+    ChannelDefinition:
+      type: object
+      additionalProperties: false
+      properties:
+        number: &a7
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
+        name: &a8
+          type: string
+          maxLength: 100
+        shortName: &a9
+          type: string
+          maxLength: 24
+        description: &a10
+          type: string
+          maxLength: 2000
+        groupId: *a6
+        enabled: *a2
+        visibility: &a11
+          type: string
+          enum:
+            - VISIBLE
+            - HIDDEN
+        sortOrder: *a5
+        logo: &a12
+          $ref: "#/components/schemas/ChannelAppearance"
+        background: &a13
+          $ref: "#/components/schemas/ChannelAppearance"
+        artworkMediaId: *a6
+        source: &a14
+          $ref: "#/components/schemas/ChannelSource"
+      required:
+        - number
+        - name
+        - visibility
+        - logo
+        - background
+        - source
+    Channel:
+      type: object
+      additionalProperties: false
+      properties:
+        number: *a7
+        name: *a8
+        shortName: *a9
+        description: *a10
+        groupId: *a6
+        enabled: *a2
+        visibility: *a11
+        sortOrder: *a5
+        logo: *a12
+        background: *a13
+        artworkMediaId: *a6
+        source: *a14
+        id: *a1
+        count: *a5
+        warnings:
+          type: array
+          items: *a1
+        createdAt: *a5
+        updatedAt: *a5
+      required: []
+    ChannelGroup:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a1
+        name: *a1
+        slug: *a1
+        description: *a1
+        sortOrder: *a5
+        system: *a2
+        count: *a5
+      required: []
+    ChannelMedia:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a1
+        title: *a1
+        type:
+          type: string
+          enum:
+            - movie
+            - episode
+        year:
+          type: integer
+          nullable: true
+        showTitle: *a1
+        season:
+          type: integer
+          nullable: true
+        episode:
+          type: integer
+          nullable: true
+        durationMs:
+          type: integer
+          nullable: true
+        library: *a1
+        available: *a2
+        eligible: *a2
+      required: []
+    ChannelPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        count: *a5
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChannelMedia"
+        offset: *a5
+        limit: *a5
+        warnings:
+          type: array
+          items: *a1
+      required: []
+    ChannelPreviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        source:
+          $ref: "#/components/schemas/ChannelSource"
+        includeUnavailable:
+          type: boolean
+          default: false
+        offset:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 24
+      required:
+        - source
+    ChannelMetadata:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a1
+        name: *a1
+        context: *a1
+        count: *a5
+        artworkId: *a1
+        seasons: *a5
+        episodes: *a5
+      required: []
+    ChannelField:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *a1
+        label: *a1
+        kind:
+          type: string
+          enum:
+            - reference
+            - enum
+            - string
+            - number
+            - date
+            - boolean
+        operators:
+          type: array
+          items: *a1
+      required: []

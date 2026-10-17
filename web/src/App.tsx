@@ -24,6 +24,7 @@ import {
 import { bootstrap, request, type Session, type Settings } from "./api";
 import { useTVFocus } from "./focus";
 import { PlexPage } from "./PlexPage";
+import { ChannelsPage } from "./channels/ChannelsPage";
 
 type Page = "live" | "guide" | "channels" | "plex" | "settings";
 const pages: { id: Page; name: string; icon: typeof Tv }[] = [
@@ -356,6 +357,8 @@ function Shell({
           />
         ) : page === "plex" ? (
           <PlexPage session={session} />
+        ) : page === "channels" ? (
+          <ChannelsPage session={session} />
         ) : (
           <EmptyPage page={page} navigate={navigate} />
         )}

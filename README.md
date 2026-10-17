@@ -2,7 +2,7 @@
 
 A standalone, self-hosted, TV-first home for future Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 1:** Plex account sign-in, encrypted server connections, library discovery, synchronized movie/TV metadata, artwork caching, durable background jobs and an administration media browser. Owner authentication and the cinematic TV shell remain intact. Virtual channels, schedules and playback are intentionally not implemented. No sample media is presented as real content.
+**Phase 2:** Virtual channel management and a visual rule engine over real synchronized Plex inventory. Create handpicked, show, collection and rule channels; inspect their membership and artwork before saving. Plex account sign-in, encrypted credentials, library synchronization, owner authentication and the cinematic TV shell remain intact. Scheduling, EPG and playback are intentionally not implemented. No sample media is presented as real content.
 
 ## Docker quick start
 
@@ -112,3 +112,26 @@ Artwork is served by authenticated OWNER/ADMIN endpoints. The browser never sees
 Run `node scripts/update-plex-openapi.mjs` from the repository root after `npm ci` in web to regenerate the Phase 1 contract additions. All writes use existing application sessions, exact-Origin validation and per-session CSRF tokens. Plex upstream authorization errors return safe 502 responses, distinct from application-session 401 responses.
 
 The browser test uses an isolated test-only Plex fixture container with a randomly generated token. It exercises the real application HTTP/sync/cache stack and a container restart; it does not prove compatibility with a real Plex server. The normal application image/Compose configuration contains no fixture service. Live Plex evidence is separately recorded in VALIDATION.md. Unit tests use HTTP fixtures for failures, cancellation and inventory safety; they never require your Plex account.
+
+## Create channels
+
+Open **Channels → Create channel** as OWNER or ADMIN. Choose a unique number, name, group and content source. The right-side preview shows current membership, not airtimes. Empty matches produce a warning and can be saved; malformed rules and missing references cannot.
+
+- **Handpicked:** search movies/episodes, filter by type, library, genre or show, select a page or individual items, then drag or use the up/down buttons to reorder. Shows and seasons are containers, never playable members. Up to 1,000 explicit selections are supported. Unavailable selections stay configured and can be inspected with the troubleshooting checkbox.
+- **Show:** choose a show with server/library context, all seasons or selected seasons, and whether to include specials. Episodes resolve by numeric season/episode order. Select at least one season for selected-season mode. Unavailable episodes are excluded by default.
+- **Collection:** choose a specific Plex collection and library. Same-name collections are kept distinct. Collection membership on a show expands to its episodes.
+- **Smart rules:** combine ALL (AND), ANY (OR), and NONE (NOT) groups with typed fields. Pick metadata from searchable lists. Dates use date inputs, numeric ranges use two values, and duration is in minutes. The server independently validates every saved or previewed rule.
+
+Groups have names, slugs and display order. Deleting a nonempty group explicitly moves or ungroups its channels. Channel actions include edit, duplicate, preview, enable/disable and confirmed deletion. Duplicate copies configuration with a new identity/number. Disabled channels retain their source and membership.
+
+Artwork can be automatic, selected Plex media, or an uploaded PNG/JPEG/WebP (including transparency). Uploads are limited to 8 MiB, 8192 pixels per edge and 36 megapixels, with a total 256 MiB upload budget. They live under `/config/uploads/channels` and survive restarts. Unreferenced uploads older than 24 hours are cleaned on subsequent uploads; referenced images shared by duplicate channels are retained. Keep the whole `/config` volume in backups. If Plex artwork cannot be retrieved, a generated channel identity is used.
+
+Membership and counts query SQLite only. Plex being OFFLINE does not remove synchronized content from channel matches. Normally only available movies/episodes in selected, present libraries on enabled servers match; explicit show configuration or the preview troubleshooting option can include unavailable/inactive inventory. This is metadata inspection, not a guarantee that Plex can play an item. Accounts with USER role cannot access channel administration in this phase.
+
+## Phase 2 limits and upgrade
+
+Migration `003_virtual_channels.sql` upgrades the existing database without changing owner accounts, sessions, Plex credentials or inventory identities. Back up `/config` before upgrading; do not delete it. A previous binary cannot open the newer schema: restore its matching backup for rollback.
+
+Rules support eight levels and 64 nodes, with up to 64 values per multi-selection. Metadata options are paginated, previews return at most 100 items, and channel lists are paginated. String matching uses SQLite's case-insensitive behavior (ASCII case folding, not full language-aware search). Missing metadata does not satisfy positive conditions; negation includes missing metadata. Relative date rules evaluate against current UTC time and may change as time passes. Collections and people inherit Phase 1's source identity limitations where Plex omits IDs.
+
+Channel numbers are 1–24 letters/digits/dots/hyphens/underscores, unique case-insensitively across enabled and disabled channels. No favorites semantics, playback policy, randomization, repeat windows or scheduling are implied by membership order. Phase 3 is the separately authorized deterministic scheduling engine.

@@ -79,6 +79,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/settings", a.auth(a.getSettings))
 	mux.HandleFunc("PUT /api/v1/settings", a.auth(a.putSettings))
 	a.plexRoutes(mux)
+	a.channelRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

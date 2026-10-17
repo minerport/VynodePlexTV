@@ -159,3 +159,72 @@ Added the Phase 1 migration and upgrade test; Plex client/auth/metadata/service/
 - Artwork retrieval is validated; no playback, transcoding, channel, schedule or guide engine exists yet.
 
 **Recommended Phase 2: Virtual Channels and Rule Engine only.** Add channel/group CRUD and migrations, typed source/rule definitions, independently tested AND/OR/NOT matching over normalized inventory, static/show/collection/genre/era/person/recent sources, ordering and repeat-policy configuration, a visual rule builder, source previews, and polished channel creation/editing. Exclude unavailable/unselected source content from new matches while preserving historical references. Keep schedule generation, EPG and playback for their explicitly authorized later phases.
+
+# Phase 2 validation — 2026-10-17
+
+## Baseline, scope and upgrade
+
+Started from clean Phase 1 commit `36ed7266541cc9bc236c13732c06a319df94309e` in this standalone repository. Read the project documents, migrations, authentication/settings implementation, inventory models and focus handling. Baseline backend and all 13 existing frontend tests passed before implementation. No VyNode repository was modified.
+
+Kept a complete stopped-container Phase 1 config archive in ignored `.local/backups/phase1-config.tar.gz`, tagged the old image `afterglow-tv:phase1`, and made a consistent SQLite snapshot for comparison. Migration 003 applied to the actual existing `/config` volume through normal Compose startup. It adds channel configuration and upload metadata only; no scheduler/EPG/playback tables or behavior.
+
+## Automated validation
+
+- `docker build --target backend-test -t afterglow-backend-test .`: PASS. Runs `go test ./...`, `go vet ./...`, and verifies no gofmt changes. There are 28 top-level backend tests, including golden rule subcases.
+- `npm test`: PASS, 19 tests across five files; all Phase 0/1 tests retained.
+- `npm run lint`: PASS with zero warnings.
+- `npm run format:check`: PASS.
+- `npm run build`: PASS, TypeScript and Vite production build.
+- `docker compose build`: PASS, production Go build plus React build, final non-root image version 0.3.0.
+- `npm run test:e2e`: PASS. The isolated fixture Docker stack exercises owner setup/login/logout, Plex connection/discovery/synchronization, existing TV hierarchy, settings, artwork, four channel types, visual nested NOT, preview counts, duplication, disable/delete, browser navigation and container persistence. Screenshots cover desktop and tablet layouts. Test containers/network/volume are removed by teardown.
+
+Backend additions cover typed fields/operators, nested AND/OR/NOT, invalid fields/value types/references, depth/node caps, injection strings, NULL behavior, relative UTC dates with an injected clock, inherited show metadata, numeric episode ordering/specials/selected seasons, static order/pagination/retained unavailable references, counts, offline resolution, CRUD/duplicate/unique numbers, groups, uploads, fallback escaping, audit records, RBAC and CSRF. A Phase 1 schema upgrade test preserves existing owner/session/settings and validates rerun safety. HTTP tests enforce anonymous/USER restrictions and validate real service behavior behind the handlers.
+
+Initial development checks caught fixture/test expectations after atomic duplication auditing and a browser label-selector mismatch; these were corrected before the passing runs. Real custom-artwork testing also caught root-owned files created by a local validation helper, not the app's upload path. Those helper-created files/directories were assigned to the application's UID; the final browser test uses the actual upload control and non-root server path.
+
+## Real synchronized inventory and independent counts
+
+Created six persistent channels from the real, already synchronized Plex inventory. No fixture media was inserted into production.
+
+| Channel | Source | Matching playable items | Measured count + first-page preview |
+| --- | --- | ---: | ---: |
+| 101 Handpicked Cinema | Static, five real movies | 5 | 8.8 ms |
+| 102 Show Spotlight | A real multi-season show, specials excluded | 142 | 27.7 ms |
+| 103 Action Movies | Movie AND Action genre | 1,284 | 24.7 ms |
+| 104 90s Movies | Movie AND year 1990–1999 | 64 | 7.3 ms |
+| 105 Action & the 90s | (Action OR 1990–1999) AND NOT episode | 1,320 | 22.7 ms |
+| 106 Collection Spotlight | An existing Plex collection | 15 | 16.3 ms |
+
+Direct SQL independently confirmed movie total 3,506, Action 1,284, decade 64, nested union 1,320 and show 142. Static preview preserves the five selected identities and order. Repeated previews return identical results, and count APIs agree with preview counts. These are local measurements on this machine, not general performance guarantees. An initial correlated-OR relationship query measured 1.6–1.7 seconds; rewriting it to use indexed item/parent identities reduced the same real queries to tens of milliseconds without changing golden or real results. Pages are bounded and counts do not load media objects.
+
+Real Chromium browser validation on `http://localhost:8080/#channels` verified all six cards and counts, static and nested-rule editing/saving, duplicate, disable, confirmed deletion, group create/rename/delete, uploaded transparent PNG, rendered artwork and tablet layout without horizontal overflow. Screenshots were inspected locally and are excluded from Git. The test used a temporary expiring owner session without changing the owner password; it is revoked and removed after validation.
+
+## Docker restart and inventory preservation
+
+Restarted the actual application container and compared complete channel responses, group responses and custom artwork bytes. Channel identities, source JSON/rules, static membership/order, disabled duplicate state, groups and the uploaded logo persisted. The temporary duplicate/group were deleted after the checks; the six useful channels remain.
+
+Comparing the upgraded database to the consistent pre-upgrade snapshot confirmed:
+
+- 10,672 inventory rows before and after; every local ID, Plex rating key, source server and availability value matched.
+- Zero duplicate Plex media identities; 83,881 existing stream rows retained.
+- All five library identities/selections persisted.
+- The owner/password hash, existing sessions and settings persisted.
+- The encrypted server credential and key version were unchanged. A fresh post-restart health check authenticated successfully using that credential.
+
+## Plex outage and recovery
+
+Temporarily changed this application's saved Plex endpoint to an unreachable loopback port, keeping the real Plex server and other applications untouched. Ran an actual health job and confirmed FAILED status. While disconnected, the channel-list API and real browser loaded, and all six source previews returned the same counts from SQLite. Existing inventory identities and availability remained unchanged. Restored the original connection in a finally-protected cleanup path; a new health job SUCCEEDED. This is a controlled connection-outage simulation, not a claim that the physical Plex server was shut down.
+
+## Security and source review
+
+Channel administration, metadata selectors, preview and uploads require OWNER/ADMIN server-side. Writes also require the existing Origin/CSRF checks. Rule SQL uses fixed field/operator fragments and bound values, with bounded tree and pagination sizes. Static references accept only playable existing media. Audit events contain actor, target, UTC timestamp and a safe action summary; channel changes and audits commit atomically. Deletion retains Plex inventory.
+
+PNG/JPEG/WebP uploads are decoded and checked for size/dimensions, use SHA-256 filenames under `/config`, have a bounded storage budget and never accept a filesystem path. SVG uploads are rejected; the generated fallback SVG escapes channel text. Shared images remain referenced after duplication/deletion. Artwork endpoints authenticate before serving content and never include Plex credentials in URLs. The existing token/key representations were scanned against source without printing them: PASS. Private database snapshots, credentials, generated uploads, cached artwork, browser artifacts and validation helpers remain ignored/untracked.
+
+## Files and limitations
+
+Added `internal/channels/` (models, rules, service, resolver, metadata, groups, artwork and tests), migration 003, HTTP channel routes/tests, `web/src/channels/` (API, builder, pickers, previews, groups, cards, styles and tests), the browser channel journey, and a channel OpenAPI generator. Updated API routing, migration tests, app navigation/focus, API error details, Docker/package versions, E2E fixture/journey and project documentation. The commit file list is authoritative.
+
+Limits are deliberate: 1,000 explicit static items, 64 rule nodes/eight levels, 64 multi-values, 100 preview items per request, 8 MiB/image and 256 MiB upload storage. SQLite string folding is ASCII-oriented. Relative-date results can change with UTC time. Missing positive metadata is false; negation includes missing values. Collection/person identity quality follows the Plex metadata received. Administration remains OWNER/ADMIN-only; household channel favorites and viewer playback remain future work. One app instance owns the volume. Keyboard/browser navigation was tested; this is not physical TV-remote hardware validation.
+
+**Phase 3 recommendation: Deterministic Linear Scheduling Engine only.** Add generated program entries, stable seeds/revisions, sequential/random/smart-random policies, no-repeat windows, schedule horizon and idempotent extension jobs, block-scheduling foundations and schedule previews. Do not begin Phase 3 without explicit authorization. No Phase 3 implementation was included.
