@@ -278,9 +278,9 @@ func (s *Service) ListGroup(ctx context.Context, offset, limit int, group string
 	return out, nil
 }
 func (s *Service) Save(ctx context.Context, id string, d Definition, actor string) (Channel, error) {
-	return s.save(ctx, id, d, actor, "")
+	return s.save(ctx, id, d, actor, "", "")
 }
-func (s *Service) save(ctx context.Context, id string, d Definition, actor, actionOverride string) (Channel, error) {
+func (s *Service) save(ctx context.Context, id string, d Definition, actor, actionOverride, duplicateFrom string) (Channel, error) {
 	if e := s.validate(ctx, &d); e != nil {
 		return Channel{}, e
 	}
@@ -335,6 +335,16 @@ func (s *Service) save(ctx context.Context, id string, d Definition, actor, acti
 	}
 	if actionOverride != "" {
 		action = actionOverride
+	}
+	if created {
+		if duplicateFrom != "" {
+			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings SELECT ?,mode,timezone,anchor_ms,lower(hex(randomblob(16))),movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,unixepoch(),unixepoch() FROM channel_schedule_settings WHERE channel_id=?`, id, duplicateFrom)
+		} else {
+			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings(channel_id,mode,timezone,anchor_ms,seed,created_at,updated_at) SELECT ?,CASE WHEN ? IN('STATIC','SHOW') THEN 'SEQUENTIAL' ELSE 'SMART_RANDOM' END,timezone,?,lower(hex(randomblob(16))),unixepoch(),unixepoch() FROM app_settings WHERE id=1`, id, d.Source.Type, (stamp()-604800)*1000)
+		}
+		if e != nil {
+			return Channel{}, e
+		}
 	}
 	if e = audit(ctx, tx, actor, action, id, "Channel configuration saved"); e != nil {
 		return Channel{}, e
@@ -414,5 +424,5 @@ func (s *Service) Duplicate(ctx context.Context, id, actor string) (Channel, err
 		c.Name = string([]rune(c.Name)[:min(45, len([]rune(c.Name)))])
 	}
 	c.Name += " Copy"
-	return s.save(ctx, "", c.Definition, actor, "CHANNEL_DUPLICATED")
+	return s.save(ctx, "", c.Definition, actor, "CHANNEL_DUPLICATED", id)
 }

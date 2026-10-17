@@ -49,4 +49,16 @@ Implemented migration 003, the isolated local channel service, typed static/show
 
 ### Next authorized boundary
 
-Phase 3 is **not started**. Recommended scope: deterministic linear schedule generation, persisted program entries, sequential/random/smart-random order, no-repeat windows, configurable horizon, stable seeds/revisions, idempotent extension jobs, block-scheduling foundation and schedule preview. Keep actual playback/EPG/channel surfing outside that phase unless separately authorized.
+At the Phase 2 checkpoint, the next recommended scope was: deterministic linear schedule generation, persisted program entries, sequential/random/smart-random order, no-repeat windows, configurable horizon, stable seeds/revisions, idempotent extension jobs, block-scheduling foundation and schedule preview. Keep actual playback/EPG/channel surfing outside that phase unless separately authorized.
+
+## Phase 3 — authorized scheduling implementation
+
+Clean baseline 9c190bcee037ec37f2d367e6875af5bc1f8f06ca inspected; 28 backend and 19 frontend tests and Docker build passed. Preserve Phase 2 resolver and extend it with a bounded normalized membership snapshot, without rule duplication. Add migration 004, persisted millisecond UTC timelines/settings/checkpoints/history and scheduler jobs in the shared durable queue. Separate queue consumers by job type so Plex never claims scheduling jobs. Pure deterministic policies feed transactional extension/repair with a protected current/past boundary. Add admin settings/day preview/diagnostics, authenticated enabled-channel reads, extensive deterministic/time/repair tests and real six-channel upgrade, outage and restart validation. No playback or full EPG.
+
+### Phase 3 implementation status
+
+Implemented and validated migration 004, deterministic policies, persisted UTC-millisecond timelines/settings/history/checkpoints, current/next/previous queries, safe suffix repair/regeneration, retention/extension, isolated bounded scheduler jobs, diagnostics and the scheduling studio. Existing Phase 0–2 behavior passed the complete regression suite. Six real channels, precise timeline integrity, seed changes, membership repair, outage recovery, container restart/recreation, actual artwork and upgrade preservation were validated. See VALIDATION.md for counts, timings and limits.
+
+### Next phase — explicit authorization required
+
+Phase 4: **Linear Playback and Live Channel Tuning**. Reuse persisted program-at-now/current/next queries; resolve the referenced local media through the Plex service, compute live offsets, orchestrate supported Plex URLs/sessions, handle browser capabilities, add Watch Live/Watch From Beginning, player/current-next overlay, channel switching and explicit unavailable/offline/transcode failure states. Preserve the scheduler's existing current/past stability contract. No Phase 4 code has been started.

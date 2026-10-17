@@ -47,6 +47,14 @@ func main() {
 	srv := &http.Server{Addr: cfg.Address, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	schedulerDone := make(chan struct{})
+	go func() {
+		defer close(schedulerDone)
+		if err := api.Scheduler().Run(ctx); err != nil {
+			logger.Error("Scheduler worker stopped unexpectedly")
+			stop()
+		}
+	}()
 	workerDone := make(chan struct{})
 	go func() {
 		defer close(workerDone)
@@ -70,4 +78,5 @@ func main() {
 	}
 	stop()
 	<-workerDone
+	<-schedulerDone
 }

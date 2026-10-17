@@ -43,7 +43,7 @@ http
       4: ["22", "episode", "Test Episode"],
     };
     const metadata = (key, type, title) =>
-      `<${type === "movie" || type === "episode" ? "Video" : "Directory"} ratingKey="${key}" type="${type}" title="${title}" year="2024" updatedAt="1" thumb="/library/metadata/${key}/thumb/1" art="/library/metadata/${key}/art/1" ${type === "season" ? 'parentRatingKey="20" index="1"' : type === "episode" ? 'parentRatingKey="21" grandparentRatingKey="20" index="1" parentIndex="1"' : ""}><Genre id="1" tag="Drama"/><Collection id="2" tag="Test Universe"/><Guid id="tmdb://1"/></${type === "movie" || type === "episode" ? "Video" : "Directory"}>`;
+      `<${type === "movie" || type === "episode" ? "Video" : "Directory"} ratingKey="${key}" type="${type}" title="${title}" year="2024" duration="${type === "movie" ? 7200123 : 1440321}" updatedAt="1" thumb="/library/metadata/${key}/thumb/1" art="/library/metadata/${key}/art/1" ${type === "season" ? 'parentRatingKey="20" index="1"' : type === "episode" ? 'parentRatingKey="21" grandparentRatingKey="20" index="1" parentIndex="1"' : ""}><Genre id="1" tag="Drama"/><Collection id="2" tag="Test Universe"/><Guid id="tmdb://1"/></${type === "movie" || type === "episode" ? "Video" : "Directory"}>`;
     if (url.pathname.endsWith("/all")) {
       const record = types[kind];
       xml(

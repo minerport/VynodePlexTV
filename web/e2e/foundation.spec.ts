@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { channelJourney } from "./channel-journey";
+import { scheduleJourney } from "./schedule-journey";
 
 test("complete owner journey, remote navigation, logout, and container persistence", async ({
   page,
@@ -223,6 +224,7 @@ test("complete owner journey, remote navigation, logout, and container persisten
     .toBeGreaterThan(0);
   await nav.getByRole("link", { name: "Settings", exact: true }).click();
   await channelJourney(page);
+  await scheduleJourney(page);
   await nav.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(

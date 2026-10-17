@@ -228,3 +228,67 @@ Added `internal/channels/` (models, rules, service, resolver, metadata, groups, 
 Limits are deliberate: 1,000 explicit static items, 64 rule nodes/eight levels, 64 multi-values, 100 preview items per request, 8 MiB/image and 256 MiB upload storage. SQLite string folding is ASCII-oriented. Relative-date results can change with UTC time. Missing positive metadata is false; negation includes missing values. Collection/person identity quality follows the Plex metadata received. Administration remains OWNER/ADMIN-only; household channel favorites and viewer playback remain future work. One app instance owns the volume. Keyboard/browser navigation was tested; this is not physical TV-remote hardware validation.
 
 **Phase 3 recommendation: Deterministic Linear Scheduling Engine only.** Add generated program entries, stable seeds/revisions, sequential/random/smart-random policies, no-repeat windows, schedule horizon and idempotent extension jobs, block-scheduling foundations and schedule previews. Do not begin Phase 3 without explicit authorization. No Phase 3 implementation was included.
+
+## Phase 3 — deterministic scheduling (2026-10-17)
+
+Baseline: clean `9c190bcee037ec37f2d367e6875af5bc1f8f06ca`. Inspected the required architecture/implementation/validation documentation, migrations 001–003, authentication/settings, channel resolver/editor, Plex job lifecycle and time handling. Baseline 28 backend tests, 19 frontend tests and Docker build passed. Phase 2 image retained as `afterglow-tv:phase2`; stopped-container `/config` archive retained in ignored `.local/backups/phase2-config.tar.gz`. A consistent SQLite Phase 2 snapshot is retained in the isolated `afterglow_phase3_baseline` volume. No unrelated repository was touched.
+
+### Automated checks
+
+- Backend: **45 top-level tests / 110 cases including subtests passed** using Go 1.26 in `afterglow-backend-test`. `go vet ./...` and `gofmt` clean. Includes all Phase 0–2 tests.
+- Scheduler coverage: exact static loops, show season/episode membership ordering, millisecond durations, continuation, seeded random cycles/coverage/immediate-repeat avoidance, same/different seeds, persisted Smart Random history, type-specific repeat windows, oldest-first relaxation, single/two/1,000-item channels, show/season tie preferences, cancellation, invalid durations and bounded-generation rollback.
+- Time/repair coverage: UTC, midnight crossings, spring-forward 23-hour and fall-back 25-hour days; exact start/end and next/previous boundaries; future unavailable/duration/removal/addition/order/gap/overlap repairs; protected historical/current row IDs/times; title/artwork changes; pruned repeat history; disabled/empty channels; duplicate settings/no copied programs; cascade without inventory deletion; durable job success, interrupted-job recovery and Plex/scheduler queue isolation.
+- API: authenticated reads, disabled-channel restriction, settings/generate/repair/regenerate authorization for OWNER/ADMIN vs USER, origin/session CSRF, invalid date/time handling and global diagnostics/jobs.
+- Migration: actual Phase 2 schema plus owner/session/timezone/channel/source upgraded to migration 004; original data and stable generated seed preserved across a second migration pass. Existing upgrade/checksum tests also pass.
+- Frontend: **24 tests passed**, including schedule list/details, episode context, date navigation, configuration, confirmation, indeterminate jobs, empty/error states, Escape navigation and timezone helpers. ESLint, Prettier checks and TypeScript/Vite production build passed.
+- Docker production build passed: Go binary and Vite assets; non-root runtime, health check and persistent volume retained. Version **0.4.0**.
+- Full Playwright owner journey: **1 end-to-end scenario passed (25.8 seconds test / 44.1 seconds including stack lifecycle)**. Real temporary Docker stack and mock Plex HTTP server exercise setup/login/invalid-login/logout, settings, remote focus, Plex library synchronization/artwork/restart, Phase 2 channels, Phase 3 generation/settings/repair/regeneration confirmation/day preview, and responsive layouts. Fixture metadata now includes realistic durations; the initial missing-duration fixture was correctly excluded by the scheduler rather than receiving an invented runtime. Test stack and its temporary volume were removed afterward.
+
+### Real six-channel timelines
+
+Generated using the existing synchronized inventory and actual runtimes; no production fixtures were introduced. The 90s channel was explicitly configured to Random to cover all three modes. All six source definitions, static positions and channel rows remained unchanged.
+
+| Channel | Policy | Resolved items | Persisted programs at validation |
+| --- | --- | ---: | ---: |
+| 101 Handpicked Cinema | Sequential | 5 | 301 |
+| 102 Show Spotlight | Sequential | 142 | 694 |
+| 103 Action Movies | Smart Random | 1,284 | 274 |
+| 104 90s Movies | Random | 64 | 277 |
+| 105 Action & the 90s | Smart Random | 1,320 | 283 |
+| 106 Collection Spotlight | Smart Random | 15 | 268 |
+
+All cover at least 14 days ahead, with retained history starting October 10 and future coverage through October 31. Counts can change as normal retention/extension runs. Independent SQL over **2,097 persisted rows** found **0 gaps/overlaps, 0 invalid durations, 0 missing media references and 0 duplicate sequence positions**. Current/next/previous queries returned adjacent correct intervals for every channel. Real static ordering and show episode context were inspected in the browser.
+
+The browser at `http://localhost:8080/#channels` was exercised at 1600×1000 and 768×1024: global studio, chronological preview, artwork decoding, settings/mode-dependent repeat controls, day navigation, Escape/back focus, editor schedule entry and invalid timezone editing. No JavaScript page errors or tablet horizontal overflow. Screenshots are private ignored evidence in `.local/phase3/` and were visually inspected; media artwork is not committed.
+
+### Determinism, repair and offline evidence
+
+- Recorded future program rows plus settings and fixed-timestamp current/next/previous for all six channels. Container restart and explicit subsequent generation jobs returned identical recorded segments.
+- Final 0.4.0 container **force recreation** also preserved all settings, anchors, seeds, a five-day recorded interval and fixed-timestamp current/next/previous values exactly.
+- Disposable real-inventory channel: duplicated settings but no programs, generated timeline, removed one static member and added another, repaired future. All historical/current IDs/times stayed identical; removed media disappeared from the repaired future and new media entered it. The disposable channel was deleted afterward; the original six remained intact.
+- On the disposable channel, both Random and Smart Random with large real rule membership produced a different future media sequence after changing the seed and explicitly regenerating. Protected history/current entries remained identical.
+- Simulated Plex outage by temporarily changing only this application's saved connection URL to an unreachable loopback endpoint. Actual health job failed. Scheduler UI, current lookup and extension from 14 to 15 future days continued using SQLite. Original URL restored in a `finally`-protected workflow; health succeeded using the same encrypted credential. No Plex server or media file was changed.
+- Independent post-outage/post-upgrade SQL: **10,672/10,672 inventory identities and availability values unchanged**, same owner/password hash, existing sessions, application settings, encrypted credential/key version, five libraries, four groups, six channels, six source/rule definitions and five static memberships. Migration count is four. Config was never reset.
+
+### Performance
+
+Fresh generation was measured directly inside the Go service on an isolated copy of the real Phase 2 database (not HTTP queue latency). The benchmark performs local membership resolution, generation, transactional writes and retention. Results from this host:
+
+| Channel members / policy | Entries generated before retention | Service duration |
+| --- | ---: | ---: |
+| 5 / Sequential | 302 | 10.631 ms |
+| 142 / Sequential | 698 | 28.618 ms |
+| 1,284 / Smart Random | 279 | 155.827 ms |
+| 64 / Random | 281 | 12.458 ms |
+| 1,320 / Smart Random | 275 | 154.496 ms |
+| 15 / Smart Random | 269 | 15.988 ms |
+
+All benchmark integrity checks passed. Measured HTTP enqueue→completion checks were approximately 0.6–2.3 seconds, including the two-second worker polling interval. These are single-host observations, not a throughput guarantee for arbitrary libraries.
+
+### Security and limits
+
+Reviewed scheduling paths for server-side RBAC, CSRF/origin protection, parameterized SQL, local-ID references, safe errors and absence of Plex transport/credentials. A private scan decrypted the existing Plex credential only in memory and checked source against that token and raw/hex/base64 encryption key representations: no matches. No tokens, keys, passwords, databases, caches, screenshots, diagnostic dumps or local configuration are added to source control. Private validation sessions are revoked after use. Backups remain ignored and outside the commit.
+
+The current resource limits and behavior are explicit in README: one worker/SQLite connection, 50,000 members, 100,000 generated entries/job, seven-day maximum media duration, 0–30 past/1–30 future days, and no restoration of pruned historical rows when past retention is increased. Very old anchors/extremely short clips may hit the bounded entry budget and fail atomically. Progress is indeterminate until commit; running cancellation is best-effort. Smart Random uses scheduled—not watched—history, oldest-first with deterministic tie preferences. Small libraries necessarily relax windows. Random uses repeated seeded cycles. User-facing artwork remains a later viewer integration. No playback/full EPG/blocks/interstitials were implemented.
+
+Final rescan check: real incremental Movie and TV jobs succeeded, processing **3,506** and **7,166** records respectively. Subsequent generation jobs preserved the recorded two-day timelines for all six channels byte-for-byte. This directly validates stable schedules through a real Plex rescan with unchanged schedule-relevant inventory.

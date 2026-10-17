@@ -2,7 +2,7 @@
 
 A standalone, self-hosted, TV-first home for future Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 2:** Virtual channel management and a visual rule engine over real synchronized Plex inventory. Create handpicked, show, collection and rule channels; inspect their membership and artwork before saving. Plex account sign-in, encrypted credentials, library synchronization, owner authentication and the cinematic TV shell remain intact. Scheduling, EPG and playback are intentionally not implemented. No sample media is presented as real content.
+**Phase 3:** Persisted deterministic linear schedules over real local Plex inventory. Sequential, Random and Smart Random policies, stable anchors/seeds, repeat windows, repair/extension jobs and a cinematic scheduling studio build on the existing channel/rule engine. Plex integration, authentication and inventory safety remain intact. Playback and the production EPG are not implemented. No sample media is presented as real content.
 
 ## Docker quick start
 
@@ -135,3 +135,25 @@ Migration `003_virtual_channels.sql` upgrades the existing database without chan
 Rules support eight levels and 64 nodes, with up to 64 values per multi-selection. Metadata options are paginated, previews return at most 100 items, and channel lists are paginated. String matching uses SQLite's case-insensitive behavior (ASCII case folding, not full language-aware search). Missing metadata does not satisfy positive conditions; negation includes missing metadata. Relative date rules evaluate against current UTC time and may change as time passes. Collections and people inherit Phase 1's source identity limitations where Plex omits IDs.
 
 Channel numbers are 1–24 letters/digits/dots/hyphens/underscores, unique case-insensitively across enabled and disabled channels. No favorites semantics, playback policy, randomization, repeat windows or scheduling are implied by membership order. Phase 3 is the separately authorized deterministic scheduling engine.
+
+## Scheduling studio (Phase 3)
+
+Open **Channels → Scheduling studio**, a channel's **Schedule** button, or **Edit → Scheduling settings & preview**. The studio is an administrative chronological preview, not the final television guide. It shows saved programs, precise start/end times, episode context, artwork, coverage, diagnostics and job outcomes. No playback is implemented.
+
+Defaults are explicit and editable: Sequential for Static/Show channels, Smart Random for Rule/Collection channels, 7 past days, 14 future days, application timezone, a persisted anchor seven days before channel creation and a generated seed. Existing channel definitions are preserved by migration 004. Scheduling settings are separate from source definitions; save channel source edits before opening its schedule settings.
+
+- **Sequential:** respects static item positions, show season/episode order, or the existing stable dynamic membership order. Wraps continuously.
+- **Random:** a stable seeded permutation repeated in complete cycles; no immediate duplicate when more than one item is eligible. A repaired membership boundary also avoids an immediate duplicate.
+- **Smart Random:** first prefers items outside their movie/episode repeat window (14/30 days by default), then the oldest prior air start. If all items fall inside their window, relax to the oldest non-immediate item; a single-item channel necessarily repeats. Unseen/otherwise tied items prefer a different show/season, then use a deterministic seed/position tie-break. Windows use persisted scheduled history, not actual viewing history. Seed changes primarily affect ties and unseen-item choices; an oldest-first small library can retain its order.
+
+**Generate / extend** fills coverage and applies detected invalidation. **Repair future** rebuilds from the earliest affected future program; added membership, changed source/settings or sequential order rebuild from the first future program. **Regenerate future schedule** explicitly rebuilds all future programs after confirmation. Programs that have already started, including the current one, remain unchanged. A missing/changed future duration rebuilds the suffix from that entry so timing stays continuous. Title/artwork-only updates do not invalidate timing (unless a title change changes a Sequential channel's membership ordering). Changes are applied by the next maintenance run or a manual job.
+
+Every timeline is stored as UTC Unix **milliseconds**, with half-open intervals `[start,end)`. The initial anchor supplies a stable origin; an existing timeline's protected cut point takes precedence when the anchor is edited. A later anchor does not insert an artificial gap into an existing schedule. Calendar-day browsing and horizons use the configured IANA timezone and handle 23/25-hour DST days. Repeat windows are elapsed 24-hour days. Raising past retention cannot recover already-pruned historical rows.
+
+One scheduler worker checks enabled channels every five minutes, extends their future coverage, repairs changes and prunes expired rows. It shares the durable job table with Plex but uses separate job types and claims. Jobs show honest indeterminate progress while computing and committed generated/replaced counts afterward. Interrupted transactions roll back; interrupted RUNNING jobs become CANCELLED on restart, while queued jobs survive. Automatic maintenance retries later. The API's shared job-cancellation endpoint is best-effort for queued scheduler work; an already committing transaction may finish first.
+
+Disabled channels retain settings/history/future rows and stop extending. Empty channels stay configured and report EMPTY; unusable durations are excluded with diagnostics. No arbitrary runtime is substituted. Duplicates copy settings with a new seed but no programs. Deleting a channel cascades schedule records without touching inventory. Scheduling operates entirely from SQLite during a Plex outage.
+
+Initial resource limits: 50,000 members/channel, 100,000 generated entries/job, usable duration up to seven days, 0–30 past / 1–30 future horizon days, and 0–365 repeat-window days. Ancient anchors or extremely short clips that exceed the entry budget fail atomically; shorten the horizon or use a suitable initial anchor. The existing single SQLite connection means large generation transactions can briefly delay other database requests. The day API is paginated (up to 500 entries/page); the UI requests 100. USER can read enabled-channel schedules; administration and current artwork proxy URLs remain OWNER/ADMIN-only. Full viewer artwork access belongs with the viewer integration.
+
+No block scheduling, slots, seasonal rules, interstitials, player, streaming, EPG or recommendations were added. The next phase is **Linear Playback and Live Channel Tuning**, only after explicit authorization.

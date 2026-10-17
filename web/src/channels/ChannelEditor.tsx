@@ -14,6 +14,7 @@ import { MediaPicker } from "./MediaPicker";
 import { MetadataPicker } from "./MetadataPicker";
 import { RuleBuilder } from "./RuleBuilder";
 import { Preview } from "./Preview";
+import { ScheduleAdmin } from "../scheduler/ScheduleAdmin";
 export function ChannelEditor({
   initial,
   id,
@@ -32,13 +33,14 @@ export function ChannelEditor({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState(initial);
+  const [scheduling, setScheduling] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     nameInput.current?.focus();
-  }, []);
+  }, [scheduling]);
   useEffect(() => {
     const back = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !scheduling) {
         e.preventDefault();
         e.stopImmediatePropagation();
         onClose();
@@ -46,7 +48,7 @@ export function ChannelEditor({
     };
     window.addEventListener("keydown", back, true);
     return () => window.removeEventListener("keydown", back, true);
-  }, [onClose]);
+  }, [onClose, scheduling]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [issues, setIssues] = useState<{ path: string; message: string }[]>([]);
@@ -80,10 +82,23 @@ export function ChannelEditor({
       setBusy(false);
     }
   }
+  if (scheduling && id)
+    return (
+      <ScheduleAdmin
+        csrf={csrf}
+        initialId={id}
+        onClose={() => setScheduling(false)}
+      />
+    );
   return (
     <div className="channel-editor">
       <div className="channel-actions">
         <button onClick={onClose}>← All channels</button>
+        {id && (
+          <button onClick={() => setScheduling(true)}>
+            Scheduling settings & preview
+          </button>
+        )}
         <span className="eyebrow">
           {id ? "REFINE YOUR CHANNEL" : "CREATE A FREQUENCY"}
         </span>

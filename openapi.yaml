@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.3.0
-  description: Self-hosted Plex inventory and virtual channel membership. Channel, Plex, media and
-    jobs routes require OWNER or ADMIN. Mutations require configured Origin and session
-    X-CSRF-Token. No scheduling, EPG or playback APIs.
+  version: 0.4.0
+  description: Self-hosted Plex inventory, virtual channel membership and persisted linear scheduling.
+    Administrative mutations require OWNER/ADMIN, configured Origin and X-CSRF-Token. Authenticated
+    users may read enabled-channel schedules. No playback or full EPG APIs.
 servers:
   - url: /api/v1
 tags:
@@ -15,6 +15,7 @@ tags:
   - name: Media
   - name: Jobs
   - name: Channels
+  - name: Scheduling
 paths:
   /health:
     get:
@@ -2027,7 +2028,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                moveTo: &a6
+                moveTo: &a9
                   type: string
                   nullable: true
                 ungroup: *a2
@@ -2187,6 +2188,324 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChannelError"
+  /scheduler:
+    get:
+      tags:
+        - Scheduling
+      summary: Admin paginated schedule diagnostics
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          required: false
+          schema: &a7
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleStatus"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /scheduler/jobs:
+    get:
+      tags:
+        - Scheduling
+      summary: Admin latest 30 schedule jobs; progress is indeterminate while computing
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: channel
+          in: query
+          required: false
+          schema: &a6
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleJob"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule:
+    get:
+      tags:
+        - Scheduling
+      summary: Read enabled-channel timeline using day OR explicit start/end
+      security:
+        - sessionCookie: []
+      parameters:
+        - &a8
+          name: id
+          in: path
+          required: true
+          schema: *a6
+        - name: day
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            description: Calendar day in channel timezone, including DST
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: offset
+          in: query
+          required: false
+          schema: *a7
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulePage"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule/at:
+    get:
+      tags:
+        - Scheduling
+      summary: Current, next and previous at a timestamp (default now)
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+        - name: time
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current:
+                    $ref: "#/components/schemas/ScheduledProgram"
+                    nullable: true
+                  next:
+                    $ref: "#/components/schemas/ScheduledProgram"
+                    nullable: true
+                  previous:
+                    $ref: "#/components/schemas/ScheduledProgram"
+                    nullable: true
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule/status:
+    get:
+      tags:
+        - Scheduling
+      summary: Admin integrity and coverage diagnostics
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleStatus"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule/settings:
+    get:
+      tags:
+        - Scheduling
+      summary: Admin persisted settings
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleSettings"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+    patch:
+      tags:
+        - Scheduling
+      summary: Admin replace scheduling settings; future maintenance applies changes
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleSettings"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleSettings"
+  /channels/{id}/schedule/generate:
+    post:
+      tags:
+        - Scheduling
+      summary: Admin queue generate; preserve all programs that have started
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: *a6
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule/repair:
+    post:
+      tags:
+        - Scheduling
+      summary: Admin queue repair; preserve all programs that have started
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: *a6
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
+  /channels/{id}/schedule/regenerate:
+    post:
+      tags:
+        - Scheduling
+      summary: Admin queue regenerate; preserve all programs that have started
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a8
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: *a6
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role or CSRF/origin required
+        "404":
+          description: Channel not found or not visible
+        "422":
+          description: Invalid settings, timestamp or interval
 components:
   securitySchemes:
     sessionCookie:
@@ -2910,39 +3229,39 @@ components:
             - AUTO
             - PLEX
             - UPLOAD
-        uploadId: *a6
+        uploadId: *a9
       required:
         - source
     ChannelDefinition:
       type: object
       additionalProperties: false
       properties:
-        number: &a7
+        number: &a10
           type: string
           pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
-        name: &a8
+        name: &a11
           type: string
           maxLength: 100
-        shortName: &a9
+        shortName: &a12
           type: string
           maxLength: 24
-        description: &a10
+        description: &a13
           type: string
           maxLength: 2000
-        groupId: *a6
+        groupId: *a9
         enabled: *a2
-        visibility: &a11
+        visibility: &a14
           type: string
           enum:
             - VISIBLE
             - HIDDEN
         sortOrder: *a5
-        logo: &a12
+        logo: &a15
           $ref: "#/components/schemas/ChannelAppearance"
-        background: &a13
+        background: &a16
           $ref: "#/components/schemas/ChannelAppearance"
-        artworkMediaId: *a6
-        source: &a14
+        artworkMediaId: *a9
+        source: &a17
           $ref: "#/components/schemas/ChannelSource"
       required:
         - number
@@ -2955,18 +3274,18 @@ components:
       type: object
       additionalProperties: false
       properties:
-        number: *a7
-        name: *a8
-        shortName: *a9
-        description: *a10
-        groupId: *a6
+        number: *a10
+        name: *a11
+        shortName: *a12
+        description: *a13
+        groupId: *a9
         enabled: *a2
-        visibility: *a11
+        visibility: *a14
         sortOrder: *a5
-        logo: *a12
-        background: *a13
-        artworkMediaId: *a6
-        source: *a14
+        logo: *a15
+        background: *a16
+        artworkMediaId: *a9
+        source: *a17
         id: *a1
         count: *a5
         warnings:
@@ -3080,3 +3399,166 @@ components:
           type: array
           items: *a1
       required: []
+    ScheduleSettings:
+      type: object
+      properties:
+        channelId: *a6
+        mode:
+          type: string
+          enum:
+            - SEQUENTIAL
+            - RANDOM
+            - SMART_RANDOM
+        timezone:
+          type: string
+          description: IANA timezone
+        anchorMs: &a19
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+        seed:
+          type: string
+          minLength: 1
+          maxLength: 128
+        movieRepeatDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+        episodeRepeatDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+        pastDays:
+          type: integer
+          minimum: 0
+          maximum: 30
+        futureDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+        includeUnavailable: &a18
+          type: boolean
+        enabled: *a18
+      required:
+        - mode
+        - timezone
+        - anchorMs
+        - seed
+        - movieRepeatDays
+        - episodeRepeatDays
+        - pastDays
+        - futureDays
+        - includeUnavailable
+        - enabled
+      additionalProperties: false
+    ScheduledProgram:
+      type: object
+      properties:
+        id: *a6
+        channelId: *a6
+        mediaId: *a6
+        start: *a19
+        end: *a19
+        durationMs: *a7
+        sequence: *a7
+        revision: *a7
+        policyReason: *a6
+        title: *a6
+        showTitle: *a6
+        season:
+          type: integer
+          nullable: true
+        episode:
+          type: integer
+          nullable: true
+        available: *a18
+        artwork:
+          type: string
+          description: Authenticated admin artwork proxy; never a Plex URL/token
+      description: Persisted interval [start,end). Current and past rows retain original timing; display
+        metadata is read from current local inventory.
+    SchedulePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduledProgram"
+        more: *a18
+        start: *a19
+        end: *a19
+        timezone: *a6
+    ScheduleStatus:
+      type: object
+      properties:
+        channelId: *a6
+        name: *a6
+        number: *a6
+        mode: *a6
+        timezone: *a6
+        status:
+          type: string
+          enum:
+            - READY
+            - EMPTY
+            - NEEDS_GENERATION
+            - NEEDS_REPAIR
+            - GENERATING
+            - ERROR
+            - DISABLED
+        resolved: *a7
+        schedulable: *a7
+        excluded: *a7
+        coverageStart:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+          nullable: true
+        coverageEnd:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+          nullable: true
+        programCount: *a7
+        lastGenerated:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+          nullable: true
+        lastError: *a6
+        integrity:
+          type: array
+          items: *a6
+        warnings:
+          type: array
+          items: *a6
+        revision: *a7
+    ScheduleJob:
+      type: object
+      properties:
+        id: *a6
+        channelId: *a6
+        type: *a6
+        status: *a6
+        processed: *a7
+        repaired: *a7
+        error: *a6
+        createdAt:
+          type: integer
+          description: Unix seconds
+        startedAt:
+          type: integer
+          nullable: true
+        completedAt:
+          type: integer
+          nullable: true
+        affectedStart:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+          nullable: true
+        affectedEnd:
+          type: integer
+          format: int64
+          description: UTC Unix milliseconds
+          nullable: true

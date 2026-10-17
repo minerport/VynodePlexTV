@@ -14,6 +14,7 @@ import { ChannelEditor } from "./ChannelEditor";
 import { GroupManager } from "./GroupManager";
 import { Preview } from "./Preview";
 import "./channels.css";
+import { ScheduleAdmin } from "../scheduler/ScheduleAdmin";
 export function ChannelsPage({ session }: { session: Session }) {
   if (session.user.role === "USER")
     return (
@@ -28,6 +29,7 @@ export function ChannelsPage({ session }: { session: Session }) {
   return <ChannelAdmin csrf={session.csrfToken} />;
 }
 function ChannelAdmin({ csrf }: { csrf: string }) {
+  const [schedule, setSchedule] = useState<string | null>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -47,11 +49,11 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState("");
   useEffect(() => {
-    if (!editor) {
+    if (!editor && schedule === null) {
       const frame = requestAnimationFrame(() => createButton.current?.focus());
       return () => cancelAnimationFrame(frame);
     }
-  }, [editor]);
+  }, [editor, schedule]);
   const reload = useCallback(async () => {
     const [list, g, f] = await Promise.all([
       channelAPI.list(offset, filter),
@@ -85,6 +87,14 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
       setBusy(false);
     }
   }
+  if (schedule !== null)
+    return (
+      <ScheduleAdmin
+        csrf={csrf}
+        initialId={schedule || undefined}
+        onClose={() => setSchedule(null)}
+      />
+    );
   if (editor)
     return (
       <ChannelEditor
@@ -121,6 +131,7 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
           + Create channel
         </button>
         <button onClick={() => setManage(!manage)}>Manage groups</button>
+        <button onClick={() => setSchedule("")}>Scheduling studio</button>
         <label>
           Group
           <select
@@ -197,8 +208,8 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
         <div className="empty-panel">
           <h2>Your first channel starts here.</h2>
           <p>
-            Use your synchronized Plex library to give it a personality.
-            Scheduling and playback come next.
+            Use your synchronized Plex library to give it a personality. Build
+            its schedule in the Scheduling studio.
           </p>
         </div>
       )}
@@ -261,6 +272,7 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
                     Edit
                   </button>
                   <button onClick={() => setPreview(c)}>Preview</button>
+                  <button onClick={() => setSchedule(c.id)}>Schedule</button>
                   <button
                     disabled={busy}
                     onClick={() =>

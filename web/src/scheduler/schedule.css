@@ -1,0 +1,106 @@
+.schedule-page > .eyebrow {
+  display: block;
+  margin-top: 2rem;
+}
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 1.2rem;
+}
+.schedule-badge {
+  display: inline-block;
+  border: 1px solid #8b70ad;
+  border-radius: 2rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+.schedule-summary {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.schedule-summary p {
+  width: 100%;
+  margin: 0.2rem 0;
+}
+.schedule-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.2rem;
+  margin: 1.5rem 0;
+}
+.schedule-page label {
+  display: flex;
+  gap: 0.6rem;
+  flex-direction: column;
+  margin: 0.8rem 0;
+}
+.schedule-page label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+.schedule-page input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.schedule-page details > summary {
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.6rem;
+}
+.schedule-page details details {
+  padding: 1rem 0;
+}
+.schedule-programs {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.schedule-programs li {
+  display: grid;
+  grid-template-columns: 230px 64px 1fr;
+  gap: 1.4rem;
+  align-items: center;
+  margin: 0;
+}
+.schedule-programs img {
+  width: 64px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #302838;
+}
+.schedule-programs h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.schedule-programs time small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #b3a9c4;
+}
+.schedule-programs p {
+  margin: 0.4rem 0;
+}
+.schedule-page summary:focus-visible {
+  outline: 3px solid #e1bfff;
+  outline-offset: 5px;
+}
+@media (max-width: 700px) {
+  .schedule-programs li {
+    grid-template-columns: 52px 1fr;
+  }
+  .schedule-programs time {
+    grid-column: 1/-1;
+  }
+  .schedule-programs img {
+    width: 52px;
+    height: 75px;
+  }
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}

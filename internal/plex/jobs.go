@@ -155,7 +155,7 @@ func (s *Service) Cancel(ctx context.Context, id, actor string) error {
 
 // Run is a single bounded worker. Restarted RUNNING jobs are cancelled, never resumed into reconciliation.
 func (s *Service) Run(ctx context.Context) error {
-	if _, err := s.db.ExecContext(ctx, `UPDATE jobs SET status='CANCELLED',cancel_requested=1,completed_at=?,error='Application restarted during job; inventory preserved' WHERE status='RUNNING'`, now()); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE jobs SET status='CANCELLED',cancel_requested=1,completed_at=?,error='Application restarted during job; inventory preserved' WHERE status='RUNNING' AND type LIKE 'PLEX_%'`, now()); err != nil {
 		return err
 	}
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM sync_seen WHERE job_id IN (SELECT id FROM jobs WHERE status NOT IN ('RUNNING','QUEUED'))"); err != nil {
@@ -190,7 +190,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 }
 func (s *Service) runNext(ctx context.Context) (bool, error) {
-	j, err := scanJob(s.db.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE status='QUEUED' ORDER BY created_at,rowid LIMIT 1"))
+	j, err := scanJob(s.db.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM jobs WHERE status='QUEUED' AND type LIKE 'PLEX_%' ORDER BY created_at,rowid LIMIT 1"))
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}

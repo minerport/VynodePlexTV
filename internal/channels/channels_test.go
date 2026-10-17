@@ -304,3 +304,27 @@ func TestArtworkValidationAndPersistence(t *testing.T) {
 		t.Fatal("fallback not escaped")
 	}
 }
+
+func TestSchedulingSnapshotUsesStaticAndShowOrdering(t *testing.T) {
+	ctx := context.Background()
+	s := fixture(t)
+	d := base(Source{Type: "STATIC", Static: &StaticConfig{MediaIDs: []string{"b", "a"}}})
+	c, e := s.Save(ctx, "", d, "owner")
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, items, e := s.ScheduleSnapshot(ctx, c.ID, false)
+	if e != nil || len(items) != 2 || items[0].ID != "b" || items[1].ID != "a" {
+		t.Fatal(items, e)
+	}
+	d.Number = "201"
+	d.Source = Source{Type: "SHOW", Show: &ShowConfig{ShowID: "z", EpisodeScope: "ALL", IncludeSpecials: false}}
+	c, e = s.Save(ctx, "", d, "owner")
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, items, e = s.ScheduleSnapshot(ctx, c.ID, false)
+	if e != nil || len(items) != 2 || items[0].ID != "c" || items[1].ID != "e" || items[0].ShowID != "z" {
+		t.Fatal(items, e)
+	}
+}

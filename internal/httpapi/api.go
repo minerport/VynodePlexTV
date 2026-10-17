@@ -19,12 +19,15 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"afterglow.local/tv/internal/channels"
 	"afterglow.local/tv/internal/config"
 	"afterglow.local/tv/internal/plex"
+	"afterglow.local/tv/internal/scheduler"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type API struct {
+	scheduler *scheduler.Service
 	db        *sql.DB
 	cfg       config.Config
 	log       *slog.Logger
@@ -57,7 +60,7 @@ func New(db *sql.DB, cfg config.Config, logger *slog.Logger, version string) *AP
 	if err != nil {
 		panic(err)
 	}
-	return &API{db: db, cfg: cfg, log: logger, version: version, dummyHash: dummy, limiter: rateLimiter{buckets: map[string]bucket{}}}
+	return &API{scheduler: scheduler.New(db, channels.New(db, cfg.Dir), logger), db: db, cfg: cfg, log: logger, version: version, dummyHash: dummy, limiter: rateLimiter{buckets: map[string]bucket{}}}
 }
 
 func (a *API) Handler() http.Handler {
@@ -80,6 +83,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/v1/settings", a.auth(a.putSettings))
 	a.plexRoutes(mux)
 	a.channelRoutes(mux)
+	a.scheduleRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

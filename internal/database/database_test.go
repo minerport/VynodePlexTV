@@ -66,7 +66,7 @@ func TestMigrationsAreIdempotentAndVerified(t *testing.T) {
 	if err = db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
-	if count != 3 {
+	if count != 4 {
 		t.Fatal(count)
 	}
 	if _, err = db.Exec("UPDATE schema_migrations SET checksum='tampered'"); err != nil {
@@ -87,5 +87,61 @@ func TestNewerDatabaseRejected(t *testing.T) {
 	}
 	if Migrate(db) == nil {
 		t.Fatal("newer database accepted")
+	}
+}
+
+func TestPhaseTwoUpgradePreservesChannelsAndDefaults(t *testing.T) {
+	dir := t.TempDir()
+	db, e := sql.Open("sqlite", filepath.Join(dir, "afterglow.db"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = db.Exec("CREATE TABLE schema_migrations(version TEXT PRIMARY KEY, checksum TEXT NOT NULL)"); e != nil {
+		t.Fatal(e)
+	}
+	for _, name := range []string{"001_foundation.sql", "002_plex_inventory.sql", "003_virtual_channels.sql"} {
+		b, e := migrations.ReadFile("migrations/" + name)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec(string(b)); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec("INSERT INTO schema_migrations VALUES(?,?)", name, fmt.Sprintf("%x", sha256.Sum256(b))); e != nil {
+			t.Fatal(e)
+		}
+	}
+	_, e = db.Exec(`INSERT INTO users VALUES('owner','owner','preserved-hash','OWNER',1);INSERT INTO sessions VALUES('session','owner','csrf',9999999999);UPDATE app_settings SET timezone='America/New_York';INSERT INTO channels(id,channel_number,name,channel_type,created_at,updated_at) VALUES('channel','201','Preserved show','SHOW',1792238400,1792238400);INSERT INTO channel_sources VALUES('channel','SHOW','{"type":"SHOW"}',1,1);`)
+	if e != nil {
+		t.Fatal(e)
+	}
+	db.Close()
+	db, e = Open(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	var mode, zone, seed string
+	var anchor int64
+	if e = db.QueryRow("SELECT mode,timezone,seed,anchor_ms FROM channel_schedule_settings WHERE channel_id='channel'").Scan(&mode, &zone, &seed, &anchor); e != nil {
+		t.Fatal(e)
+	}
+	if mode != "SEQUENTIAL" || zone != "America/New_York" || len(seed) != 32 || anchor != (1792238400-604800)*1000 {
+		t.Fatal("defaults", mode, zone, anchor)
+	}
+	var source, password, csrf string
+	db.QueryRow("SELECT config_json FROM channel_sources").Scan(&source)
+	db.QueryRow("SELECT password_hash FROM users").Scan(&password)
+	db.QueryRow("SELECT csrf_token FROM sessions").Scan(&csrf)
+	if source != `{"type":"SHOW"}` || password != "preserved-hash" || csrf != "csrf" {
+		t.Fatal("upgrade changed baseline")
+	}
+	if e = Migrate(db); e != nil {
+		t.Fatal(e)
+	}
+	var seedAgain string
+	db.QueryRow("SELECT seed FROM channel_schedule_settings").Scan(&seedAgain)
+	if seedAgain != seed {
+		t.Fatal("migration changed seed")
 	}
 }

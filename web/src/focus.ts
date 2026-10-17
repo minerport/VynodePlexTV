@@ -6,7 +6,7 @@ export function moveFocus(root: HTMLElement, key: string): boolean {
     return false;
   const elements = Array.from(
     root.querySelectorAll<HTMLElement>(
-      'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex="0"]',
+      'a[href],button:not([disabled]),summary,input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex="0"]',
     ),
   ).filter((el) => !el.closest("[hidden]") && el.getClientRects().length > 0);
   if (!elements.length) return false;
