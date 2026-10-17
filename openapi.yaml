@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: Afterglow TV API
+  version: 0.1.0
+  description: Phase 0 foundation. Auth mutations require the configured Origin. Authenticated mutations additionally require X-CSRF-Token from the session response.
+servers:
+  - url: /api/v1
+tags:
+  - name: System
+  - name: Authentication
+  - name: Settings
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Process liveness
+      responses:
+        '200':
+          description: Live
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Status' }
+  /ready:
+    get:
+      tags: [System]
+      summary: Database readiness
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Status' }
+        '503': { $ref: '#/components/responses/Error' }
+  /version:
+    get:
+      tags: [System]
+      summary: Running build version
+      responses:
+        '200':
+          description: Version
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version: { type: string }
+  /auth/status:
+    get:
+      tags: [Authentication]
+      summary: Check whether the first owner must be created
+      responses:
+        '200':
+          description: Setup state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [setupRequired]
+                properties:
+                  setupRequired: { type: boolean }
+        '500': { $ref: '#/components/responses/Error' }
+  /auth/setup:
+    post:
+      tags: [Authentication]
+      summary: Atomically create the first owner; does not sign in
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '201':
+          description: Owner created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Status' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Sign in and issue a 24-hour HttpOnly SameSite Strict session cookie
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+      responses:
+        '200':
+          description: Authenticated
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /auth/session:
+    get:
+      tags: [Authentication]
+      security: [{ sessionCookie: [] }]
+      summary: Read the authenticated user and session CSRF token
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      security: [{ sessionCookie: [] }]
+      summary: Revoke this session and clear its cookie
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/CSRF' }
+      responses:
+        '200':
+          description: Signed out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Status' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+  /settings:
+    get:
+      tags: [Settings]
+      security: [{ sessionCookie: [] }]
+      summary: Read application settings
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+        '401': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Settings]
+      security: [{ sessionCookie: [] }]
+      summary: Update settings (OWNER or ADMIN)
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/CSRF' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Settings' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: afterglow_session
+  parameters:
+    Origin:
+      in: header
+      name: Origin
+      required: true
+      schema: { type: string }
+      description: Must exactly match APP_ORIGIN.
+    CSRF:
+      in: header
+      name: X-CSRF-Token
+      required: true
+      schema: { type: string }
+  requestBodies:
+    Credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [username, password]
+            properties:
+              username: { type: string, minLength: 3, maxLength: 40, pattern: '^[A-Za-z0-9._-]+$' }
+              password: { type: string, format: password, description: 'Setup requires 12–72 UTF-8 bytes.' }
+  responses:
+    Error:
+      description: Request failed; error contains a safe user-facing message
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+  schemas:
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    Session:
+      type: object
+      required: [user, csrfToken, expiresAt]
+      properties:
+        user:
+          type: object
+          required: [id, username, role]
+          properties:
+            id: { type: string }
+            username: { type: string }
+            role: { type: string, enum: [OWNER, ADMIN, USER] }
+        csrfToken: { type: string }
+        expiresAt: { type: integer, format: int64, description: UTC Unix seconds }
+    Settings:
+      type: object
+      additionalProperties: false
+      required: [displayName, timezone]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 60 }
+        timezone: { type: string, example: America/New_York, description: Explicit IANA timezone; Local is not accepted }

@@ -1,0 +1,15 @@
+name: afterglow-dev
+services:
+  backend:
+    build:
+      context: .
+      target: backend
+    entrypoint: [/server]
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      CONFIG_DIR: /config
+      APP_ORIGIN: http://localhost:5173
+    volumes:
+      - dev_config:/config
+volumes:
+  dev_config:
