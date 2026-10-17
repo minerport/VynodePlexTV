@@ -404,3 +404,66 @@ Current limits: conservative single-part MP4/H.264/AAC Direct Play; otherwise Pl
 - `web/src/playback/player.css`
 - `web/src/scheduler/ScheduleAdmin.tsx`
 - `web/src/scheduler/api.ts`
+
+## Phase 5 — Full EPG and TV browsing (2026-10-17)
+
+Baseline: clean Phase 4 commit `46c2564515c13c75948fb1957cd0a1e273f33cf4`. Read the architecture, plan, validation, migrations 001–006, channel/scheduler/playback boundaries and frontend focus/player code before implementation. Baseline backend (60 tests / 144 cases), frontend (35 tests), production builds and Docker passed. A stopped-container /config backup and Phase 4 image were retained privately before migration; no /config reset.
+
+### Implementation and upgrade
+
+Migration 007 adds per-user favorites, last-channel preferences and a compatible playback origin field. The guide is an indexed SQLite-only domain with bounded window queries, batch metadata, half-open intersections, server time, group/favorite filters and defensive interval handling. Catch-up resolves the retained scheduler program ID, starts at zero and never changes broadcast history. Future, unavailable, hidden and disabled program access is rejected. Existing scheduler and Plex transport behavior remain intact.
+
+The TV guide includes a frozen channel column, proportional program widths, virtualized rows, three-hour windows, past/future day navigation, Now line, details, group/favorite filtering and remote focus memory. Player mini-guide, full guide and details overlays retain the existing player/session. Home includes On Now, personal favorites, Starting Soon, last channel, groups and both Recently Added networks.
+
+Real upgrade comparison preserved owner, existing authentication sessions/settings, encrypted Plex credentials, five libraries, all 10,672 media identities/availability values, four groups, eight channels, rules and five explicit static members. All eight schedule fingerprints were unchanged. Of 3,070 snapshot programs, 3,068 remained identical; two were legitimately pruned beyond configured past retention. No retained historical/current row was lost. Subsequent maintenance produced 3,071 programs. Integrity checks: zero gaps, overlaps, invalid durations, duplicate positions or missing media references. Recently Added remained 31 movies and 394 episodes from 33 shows, without type crossover.
+
+### Automated validation
+
+- Backend: 68 top-level tests / 152 cases passed; Go vet and gofmt passed. Includes guide intersections, classification/progress, groups/favorites, disabled/empty behavior, details, timezone/DST windows, user isolation, last channel and catch-up identity/authorization/history safety; all earlier tests retained.
+- Frontend: 48 tests across nine files passed; ESLint, Prettier, TypeScript and Vite production build passed. Tests cover guide geometry/state, directional focus/day/Now navigation, details/actions, filters/favorites, mini-guide, home and existing playback.
+- Production Go binary and Docker image 0.6.0 built successfully; actual Compose stack healthy/readiness passing.
+- Isolated Docker browser regression: one complete owner journey passed (43.1 seconds), including setup, login, remote navigation, logout and container persistence; isolated test volumes removed afterward.
+- Real layout regression found padding widened a clipped 1.55-pixel program to 26 pixels. Fixed narrow-cell padding and used an inset border; browser measurements now match timeline widths, including narrow edge fragments.
+
+### Real browser and viewer validation
+
+Validated all eight enabled channels together: static, show, collection, rule, decade/nested rules, Recently Added Movies and Recently Added TV. Desktop guide, horizontal timeline, frozen channel column, vertical arrow scrolling, Now line, future details and past/current actions passed. Seven downward moves preserved program focus and scrolled 357 pixels. Returning from playback restored the exact selected program. At 390×844, no page overflow; selected day remains visible after resizing. Artwork decoded on home cards and details. Large-catalog virtualization is covered structurally/tests; real validation used the eight configured channels, not hundreds of synthetic channels.
+
+Completed Home → Guide → Watch Live → mini-guide → browse five channels → tune → full Guide → past movie/episode details → Watch From Beginning → Go Live → Exit → Favorites → Starting Soon → Last Channel. Mini-guide switching left exactly one active application viewer session; full guide did not spawn a second stream. Decoded video frames verified actual playback rather than only successful API responses.
+
+Past movie catch-up requested zero and observed position 0.146 seconds; past episode observed 0.008 seconds. Both used retained past program identities. Go Live returned to current broadcast with decoded video. Recently Added Movies current restart observed 0.140 seconds; Recently Added TV 0.006 seconds, both requested zero and subsequently tuned live successfully. Future details offered no incorrect playback action. Existing live-offset and stream negotiation tests remained passing; Phase 4's Direct Play/Direct Stream/transcode evidence remains recorded above.
+
+Two owner favorites persisted and filtered correctly. A temporary USER began with no favorites, favorited its own channel, did not alter the owner's favorites and received 403 on admin active-session access. Validation user/session material was private and removed after checks.
+
+### Offline, persistence and performance
+
+Temporarily changed only this application's Plex endpoint to an unreachable loopback port, then restored it in a finally path. Did not change Plex itself or inspect Plex diagnostic logs. Guide past/current/future data, details, On Now, Starting Soon, favorites and mini-guide metadata continued working from SQLite. Playback failed cleanly; after restoration Retry produced decoded video. Inventory identities/availability remained unchanged.
+
+Recreated the real container. Compared a sampled three-hour guide window: program identities, media and timestamps identical. Favorites and exact last-channel preference persisted; schedules, owner and usable encrypted Plex connection remained intact. Authentication and playback worked again. No extra playback stream was created by browsing overlays.
+
+Ten local HTTP samples, eight real channels (includes HTTP overhead; not load-test promises):
+
+| Query | Observed latency |
+| --- | --- |
+| Three-hour guide | 8.8–11.7 ms |
+| Current/next | 11.1–13.7 ms |
+| Starting Soon | 7.2–9.5 ms |
+| Program details | 6.6–8.0 ms |
+
+Initial local browser guide render measured about 190 ms. A first current/next implementation was slower; selecting two rows per channel before metadata joins removed the unnecessary full-horizon work. No additional guide cache introduced. Static data refreshes every 30 seconds; the server-synchronized Now line updates separately.
+
+### Security, limitations and scope
+
+Source scan compared 148 source files against actual Plex credential material in memory without printing it: passed. No private database, cache, key, cookie, token, screenshot or diagnostics file is tracked. Normal APIs/artwork keep Plex credentials server-side; existing Origin/CSRF/RBAC checks apply. Favorites always derive user identity from the authenticated session. Catch-up performs the same visibility/media checks as live tuning.
+
+An unrelated previously exposed webhook key remains unrotated because its owning service administration location has not been provided. No old secret was retrieved, reused, persisted or included in this phase, and the broad diagnostic method that exposed it was not reused. This external follow-up remains outstanding; it is not represented as completed.
+
+Limits: guide queries are capped at 24 hours, 100 channels and 10,000 programs per request; UI uses three-hour windows and 50-channel pages. Mini-guide and Starting Soon currently request the first 100 channels. Very narrow clipped cells are intentionally unreadable until focused/details opened. Retention bounds catch-up availability. No physical TV remote, Safari, WAN or household load validation was performed. Existing conservative single-part/1080p playback and no manual subtitle/version controls remain. Vite reports the existing lazily loaded HLS player bundle size advisory. No full native client, DVR, external IPTV or Phase 6 interstitial features were implemented.
+
+### Files changed
+
+New: migration 007; `internal/guide/service.go` and tests; `internal/httpapi/guide.go`; `web/src/guide/` API, timeline, grid/cells, dialogs, details, mini-guide, CSS and tests; OpenAPI update script.
+
+Updated: database migration tests; HTTP API registration/playback and tests; playback service/types and tests; scheduler retained-program lookup; App/focus; player/controller/API/home and player UI tests; browser foundation regression; OpenAPI; Docker/package version; README, ARCHITECTURE, IMPLEMENTATION_PLAN and this validation record.
+
+Recommended next scope, requiring a new instruction: Phase 6 Broadcast Presentation and Interstitials — optional bumpers/trailers/custom clips, coming-up-next, per-channel branding/presentation rules and deterministic interstitial placement/transition presentation. Phase 6 has not started.

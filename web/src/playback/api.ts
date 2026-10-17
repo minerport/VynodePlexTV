@@ -24,6 +24,7 @@ export interface Capabilities {
   forceTranscode?: boolean;
 }
 export interface Tune {
+  origin?: "LIVE" | "CURRENT_FROM_BEGINNING" | "CATCH_UP";
   id: string;
   channel: Channel;
   program: Program;
@@ -56,11 +57,12 @@ export const playbackAPI = {
     capabilities: Capabilities,
     csrf: string,
     replaceSession?: string,
+    programId?: string,
   ) =>
     request<Tune>(
       "/playback/tune",
       "POST",
-      { channelId, mode, clientId, capabilities, replaceSession },
+      { channelId, mode, clientId, capabilities, replaceSession, programId },
       csrf,
     ),
   stop: (id: string, csrf: string) =>
@@ -81,6 +83,8 @@ export const playbackAPI = {
   goLive: (id: string, csrf: string) =>
     request<Tune>(`/playback/${id}/go-live`, "POST", {}, csrf),
 };
-export const watch = (id: string) => {
-  window.location.hash = `watch/${encodeURIComponent(id)}`;
+export const watch = (id: string, programId?: string) => {
+  if (!window.location.hash.startsWith("#watch/"))
+    sessionStorage.setItem("afterglow-return", window.location.hash || "#live");
+  window.location.hash = `watch/${encodeURIComponent(id)}${programId ? "?program=" + encodeURIComponent(programId) : ""}`;
 };

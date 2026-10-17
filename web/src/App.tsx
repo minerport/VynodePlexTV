@@ -1,3 +1,5 @@
+import { GuideGrid } from "./guide/GuideGrid";
+import { watch } from "./playback/api";
 import {
   useCallback,
   useEffect,
@@ -273,7 +275,8 @@ function ViewingShell(props: { session: Session; onLogout: () => void }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
   if (hash.startsWith("#watch/")) {
-    const id = hash.slice(7);
+    const [id, query] = hash.slice(7).split("?");
+    const programId = new URLSearchParams(query).get("program") ?? undefined;
     return (
       <Suspense
         fallback={
@@ -284,10 +287,12 @@ function ViewingShell(props: { session: Session; onLogout: () => void }) {
       >
         <Player
           channelId={id}
+          programId={programId}
           userId={props.session.user.id}
           csrf={props.session.csrfToken}
           onExit={() => {
-            window.location.hash = "live";
+            window.location.hash =
+              sessionStorage.getItem("afterglow-return") || "live";
           }}
         />
       </Suspense>
@@ -386,7 +391,14 @@ function Shell({
         {page === "live" ? (
           <ViewerHome
             userId={session.user.id}
+            csrf={session.csrfToken}
             fallback={<Live navigate={navigate} />}
+          />
+        ) : page === "guide" ? (
+          <GuideGrid
+            csrf={session.csrfToken}
+            userId={session.user.id}
+            onTune={watch}
           />
         ) : page === "settings" ? (
           <>
@@ -409,7 +421,7 @@ function Shell({
         <span>
           <span className="status-dot" />{" "}
           {settings?.displayName ?? "Afterglow TV"}{" "}
-          <span className="footer-divider">/</span> Library foundation
+          <span className="footer-divider">/</span> Live television
         </span>
         <span className="key-hints">
           <kbd>↑</kbd>

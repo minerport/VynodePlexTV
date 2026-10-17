@@ -1,11 +1,10 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.5.0
-  description: Self-hosted Plex inventory, channels, deterministic schedules, Recently Added templates
-    and authenticated linear playback. Administrative changes require OWNER/ADMIN. All mutations
-    require configured Origin and CSRF. Playback sessions and streams belong to the authenticated
-    viewer. No full EPG.
+  version: 0.6.0
+  description: Self-hosted local inventory, deterministic broadcasts, authenticated Plex playback,
+    guide/catch-up and personal viewer preferences. Mutations require exact Origin and session CSRF.
+    No DVR recording or external IPTV.
 servers:
   - url: /api/v1
 tags:
@@ -18,6 +17,7 @@ tags:
   - name: Channels
   - name: Scheduling
   - name: Playback
+  - name: Guide
 paths:
   /health:
     get:
@@ -2030,7 +2030,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                moveTo: &a12
+                moveTo: &a20
                   type: string
                   nullable: true
                 ungroup: *a2
@@ -2573,7 +2573,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/OnNow"
-                  serverTime: &a23
+                  serverTime: &a31
                     type: integer
                     format: int64
         "400":
@@ -2615,6 +2615,8 @@ paths:
           description: Missing/disabled channel, no current program, or foreign/expired playback session
         "409":
           description: Program boundary crossed while resolving; retry
+        "429":
+          description: Bounded tune/session capacity reached
         "502":
           description: Plex unavailable, unauthorized, unsupported or failed; sanitized error
       requestBody:
@@ -2638,6 +2640,10 @@ paths:
                 capabilities:
                   $ref: "#/components/schemas/PlaybackCapabilities"
                 replaceSession: *a9
+                programId:
+                  type: string
+                  description: Optional retained scheduler identity for FROM_BEGINNING. Must belong to channel and
+                    have already started. Historical playback is CATCH_UP.
               required:
                 - channelId
                 - mode
@@ -2969,6 +2975,14 @@ paths:
           in: path
           required: true
           schema: *a9
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum:
+              - poster
+              - background
+            default: poster
       responses:
         "200":
           description: Proxied/cached image or channel fallback
@@ -2983,6 +2997,250 @@ paths:
           description: Authentication required
         "404":
           description: Unavailable or disabled channel/program
+  /guide:
+    get:
+      tags:
+        - Guide
+      summary: Local broadcast window, maximum 24 hours and 10000 programs; channel pagination; empty
+        channels excluded
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - &a12
+          name: group
+          in: query
+          schema: &a17
+            type: string
+        - &a13
+          name: favorites
+          in: query
+          schema: &a19
+            type: boolean
+        - &a14
+          name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - &a15
+          name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuideWindow"
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+  /guide/on-now:
+    get:
+      tags:
+        - Guide
+      summary: Local current/next by channel
+      security:
+        - sessionCookie: []
+      parameters: &a16
+        - *a12
+        - *a13
+        - *a14
+        - *a15
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuideWindow"
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+  /guide/starting-soon:
+    get:
+      tags:
+        - Guide
+      summary: Programs starting in the next 30 minutes, grouped by channel; sort flattened programs by
+        start for display
+      security:
+        - sessionCookie: []
+      parameters: *a16
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuideWindow"
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+  /guide/programs/{id}:
+    get:
+      tags:
+        - Guide
+      summary: Retained program details; catch-up requires start <= server time and available media
+      security:
+        - sessionCookie: []
+      parameters:
+        - &a18
+          name: id
+          in: path
+          required: true
+          schema: *a17
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuideDetail"
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+  /users/me/favorites:
+    get:
+      tags:
+        - Guide
+      summary: Current user favorite enabled channels, normal channel ordering
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channelIds:
+                    type: array
+                    items: *a17
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+  /users/me/favorites/{id}:
+    post:
+      tags:
+        - Guide
+      summary: Favorite own channel
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a18
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorite: *a19
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+    delete:
+      tags:
+        - Guide
+      summary: Unfavorite own channel
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a18
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favorite: *a19
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /users/me/last-channel:
+    get:
+      tags:
+        - Guide
+      summary: Last successfully tuned enabled/visible channel for current user
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channelId: *a17
+        "400":
+          description: Invalid or too-dense window
+        "401":
+          description: Sign in required
+        "404":
+          description: Disabled/hidden/missing channel or expired program
 components:
   securitySchemes:
     sessionCookie:
@@ -3708,39 +3966,39 @@ components:
             - AUTO
             - PLEX
             - UPLOAD
-        uploadId: *a12
+        uploadId: *a20
       required:
         - source
     ChannelDefinition:
       type: object
       additionalProperties: false
       properties:
-        number: &a13
+        number: &a21
           type: string
           pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
-        name: &a14
+        name: &a22
           type: string
           maxLength: 100
-        shortName: &a15
+        shortName: &a23
           type: string
           maxLength: 24
-        description: &a16
+        description: &a24
           type: string
           maxLength: 2000
-        groupId: *a12
+        groupId: *a20
         enabled: *a2
-        visibility: &a17
+        visibility: &a25
           type: string
           enum:
             - VISIBLE
             - HIDDEN
         sortOrder: *a5
-        logo: &a18
+        logo: &a26
           $ref: "#/components/schemas/ChannelAppearance"
-        background: &a19
+        background: &a27
           $ref: "#/components/schemas/ChannelAppearance"
-        artworkMediaId: *a12
-        source: &a20
+        artworkMediaId: *a20
+        source: &a28
           $ref: "#/components/schemas/ChannelSource"
       required:
         - number
@@ -3753,18 +4011,18 @@ components:
       type: object
       additionalProperties: false
       properties:
-        number: *a13
-        name: *a14
-        shortName: *a15
-        description: *a16
-        groupId: *a12
+        number: *a21
+        name: *a22
+        shortName: *a23
+        description: *a24
+        groupId: *a20
         enabled: *a2
-        visibility: *a17
+        visibility: *a25
         sortOrder: *a5
-        logo: *a18
-        background: *a19
-        artworkMediaId: *a12
-        source: *a20
+        logo: *a26
+        background: *a27
+        artworkMediaId: *a20
+        source: *a28
         id: *a1
         count: *a5
         warnings:
@@ -3891,7 +4149,7 @@ components:
         timezone:
           type: string
           description: IANA timezone
-        anchorMs: &a22
+        anchorMs: &a30
           type: integer
           format: int64
           description: UTC Unix milliseconds
@@ -3915,9 +4173,9 @@ components:
           type: integer
           minimum: 1
           maximum: 30
-        includeUnavailable: &a21
+        includeUnavailable: &a29
           type: boolean
-        enabled: *a21
+        enabled: *a29
         recencyWeighted: *a11
         avoidSameShow: *a11
         minOtherShows:
@@ -3943,8 +4201,8 @@ components:
         id: *a6
         channelId: *a6
         mediaId: *a6
-        start: *a22
-        end: *a22
+        start: *a30
+        end: *a30
         durationMs: *a7
         sequence: *a7
         revision: *a7
@@ -3957,7 +4215,7 @@ components:
         episode:
           type: integer
           nullable: true
-        available: *a21
+        available: *a29
         artwork:
           type: string
           description: Authenticated admin artwork proxy; never a Plex URL/token
@@ -3970,9 +4228,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScheduledProgram"
-        more: *a21
-        start: *a22
-        end: *a22
+        more: *a29
+        start: *a30
+        end: *a30
         timezone: *a6
     ScheduleStatus:
       type: object
@@ -4092,7 +4350,7 @@ components:
         audioCodecs:
           type: array
           items: *a9
-        maxHeight: *a23
+        maxHeight: *a31
         hls: *a11
         forceTranscode: *a11
       additionalProperties: false
@@ -4133,9 +4391,9 @@ components:
           type: integer
           format: int64
           description: UTC Unix milliseconds
-        liveOffsetMs: *a23
-        positionMs: *a23
-        durationMs: *a23
+        liveOffsetMs: *a31
+        positionMs: *a31
+        durationMs: *a31
         streamUrl:
           type: string
           description: Same-origin authenticated opaque proxy resource; never a Plex URL
@@ -4152,12 +4410,18 @@ components:
           format: int64
           nullable: true
           description: Source added timestamp, UTC Unix seconds
+        origin:
+          type: string
+          enum:
+            - LIVE
+            - CURRENT_FROM_BEGINNING
+            - CATCH_UP
     PlaybackUpdate:
       type: object
       properties:
-        serverTime: *a23
+        serverTime: *a31
         mode: *a9
-        liveOffsetMs: *a23
+        liveOffsetMs: *a31
         transition: *a11
         ended: *a11
         message: *a9
@@ -4172,5 +4436,102 @@ components:
         mode: *a9
         state: *a9
         delivery: *a9
-        started: *a23
-        lastSeen: *a23
+        started: *a31
+        lastSeen: *a31
+    GuideProgram:
+      type: object
+      properties:
+        id: *a17
+        channelId: *a17
+        mediaId: *a17
+        title: *a17
+        showTitle: *a17
+        type: *a17
+        start: &a32
+          type: integer
+          format: int64
+        end: *a32
+        durationMs: *a32
+        season:
+          type: integer
+          format: int64
+          nullable: true
+        episode:
+          type: integer
+          format: int64
+          nullable: true
+        available: *a19
+        artwork: *a17
+        state:
+          type: string
+          enum:
+            - PAST
+            - CURRENT
+            - FUTURE
+        progress:
+          type: number
+        canRestart: *a19
+    GuideChannel:
+      type: object
+      properties:
+        id: *a17
+        number: *a17
+        name: *a17
+        logo: *a17
+        groupId: *a17
+        group: *a17
+        favorite: *a19
+        status: *a17
+        recentKind: *a17
+        programs:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideProgram"
+    GuideWindow:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuideChannel"
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              id: *a17
+              name: *a17
+        serverTime: *a32
+        timezone: *a17
+        start: *a32
+        end: *a32
+        more: *a19
+        warnings:
+          type: array
+          items: *a17
+    GuideDetail:
+      allOf:
+        - $ref: "#/components/schemas/GuideProgram"
+        - type: object
+          properties:
+            channel:
+              $ref: "#/components/schemas/GuideChannel"
+            summary: *a17
+            year:
+              type: integer
+              format: int64
+              nullable: true
+            rating:
+              type: number
+              nullable: true
+            contentRating: *a17
+            addedAt:
+              type: integer
+              format: int64
+              nullable: true
+            genres:
+              type: array
+              items: *a17
+            background: *a17
+            serverTime: *a32
+            timezone: *a17

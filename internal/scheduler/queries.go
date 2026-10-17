@@ -203,3 +203,8 @@ func (s *Service) ChannelIDs(ctx context.Context, offset, limit int) ([]string, 
 	}
 	return out, rows.Err()
 }
+
+// Program retrieves a retained persisted identity, scoped to its channel.
+func (s *Service) Program(ctx context.Context, channel, id string) (*Entry, error) {
+	return s.one(ctx, channel, "p.id=?", id)
+}

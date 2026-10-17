@@ -41,7 +41,7 @@ test("complete owner journey, remote navigation, logout, and container persisten
   ).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("heading", { name: "No programming yet" }),
+    page.getByRole("heading", { name: "No programming available" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(

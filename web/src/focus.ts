@@ -29,7 +29,13 @@ export function moveFocus(root: HTMLElement, key: string): boolean {
 export function useTVFocus(onBack: () => void) {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return;
       if (event.key === "Escape") {
         event.preventDefault();
         onBack();

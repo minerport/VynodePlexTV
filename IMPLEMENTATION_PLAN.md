@@ -71,6 +71,14 @@ Then add an isolated playback service consuming persisted scheduler queries and 
 
 ## Phase 4 completed
 
-Phase 3.1 and Phase 4 are implemented and validated; see VALIDATION.md for real inventory, decoded playback, offsets, transition, outage and restart evidence. The earlier Phase 3 next-phase paragraph is historical. No Phase 5 implementation has started.
+Phase 3.1 and Phase 4 are implemented and validated; see VALIDATION.md for real inventory, decoded playback, offsets, transition, outage and restart evidence. The earlier Phase 3 next-phase paragraph is historical. That statement was the Phase 4 handoff; Phase 5 completion is recorded below.
 
 Next authorized scope should be **Phase 5: Full Electronic Program Guide and TV Browsing Experience**: virtualized channel/time grid, current-time line, past/future browsing, program details, tune/catch-up actions, remote focus, groups/favorites and mini-guide foundation. Preserve persisted schedule authority and authenticated playback proxy. Await explicit instruction.
+
+## Phase 5 — implemented and validated
+
+Clean Phase 4 baseline 46c2564 inspected; baseline backend/frontend tests and production builds passed. Preserved the Phase 4 image and a stopped-container private /config snapshot. Implement the isolated local guide, migration 007 personal favorites/last-channel/origin, persisted-ID catch-up, duration-scaled virtualized EPG, details/group/favorite navigation, player overlays and refined home. Preserve the scheduler and Plex transport protocol. Validate real eight-channel guide, movie/episode catch-up, current live/restart, mini-guide stream ownership, user isolation, offline metadata/recovery, persistence and focus before committing. Keep the unrelated-key rotation follow-up separate; do not reuse broad Plex diagnostic log tooling.
+
+Recommended next phase, only on explicit instruction: **Phase 6 — Broadcast Presentation and Interstitials**. Channel bumpers, available trailers, coming-up-next/custom media, optional retro-commercial blocks, per-channel presentation rules, timeline-aware interstitial insertion, branded transitions and network identity. Do not add external IPTV, HDHomeRun, DVR recording, advanced recommendations or a native TV app as part of this scope.
+
+Phase 5 application validation passed, including 68 backend tests / 152 cases, 48 frontend tests, real viewer playback journeys, outage recovery and container persistence. See VALIDATION.md. The unrelated external webhook rotation remains pending its service administration URL. No Phase 6 work started.

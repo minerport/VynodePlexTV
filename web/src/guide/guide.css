@@ -1,0 +1,459 @@
+.guide-screen {
+  --channel-width: 240px;
+  padding: 24px 0;
+  color: #f5f1fb;
+  min-width: 0;
+}
+.guide-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.guide-heading h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  margin: 8px 0;
+}
+.guide-toolbar,
+.guide-days {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  overflow: auto;
+  padding: 12px 4px;
+}
+.guide-toolbar button,
+.guide-days button {
+  flex-shrink: 0;
+}
+.guide-toolbar button[aria-pressed="true"],
+.guide-days button[aria-pressed="true"] {
+  background: #d5b5f2;
+  color: #21182a;
+}
+.guide-toolbar span {
+  color: #bfb7cc;
+}
+.guide-viewport {
+  height: min(65vh, 800px);
+  min-height: 320px;
+  overflow: auto;
+  position: relative;
+  border: 1px solid #514459;
+  border-radius: 18px;
+  background: #0d0c12;
+  scrollbar-color: #75647f #17141c;
+  scroll-padding: 65px 20px 20px 250px;
+}
+.guide-canvas {
+  position: relative;
+}
+.guide-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 60px;
+  display: flex;
+  background: #24202c;
+}
+.guide-corner {
+  position: sticky;
+  left: 0;
+  z-index: 7;
+  width: var(--channel-width);
+  flex-shrink: 0;
+  background: #24202c;
+  padding: 18px;
+  color: #cfc4dc;
+  letter-spacing: 0.12em;
+}
+.guide-time {
+  position: relative;
+  flex: 1;
+  height: 60px;
+}
+.guide-time > span {
+  position: absolute;
+  top: 18px;
+  padding-left: 8px;
+  border-left: 1px solid #6c5e77;
+  white-space: nowrap;
+}
+.guide-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+}
+.guide-channel {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: var(--channel-width);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #211d28;
+  border-right: 1px solid #655171;
+  border-bottom: 1px solid #493c55;
+}
+.guide-channel img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.guide-channel div {
+  min-width: 0;
+  flex: 1;
+}
+.guide-channel strong,
+.guide-channel span {
+  display: block;
+}
+.guide-channel span {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guide-channel button {
+  width: 30px;
+  padding: 4px;
+  font-size: 0;
+  border: 0;
+  background: transparent;
+}
+.guide-channel button:before {
+  content: "☆";
+  font-size: 23px;
+}
+.guide-channel button[aria-pressed="true"]:before {
+  content: "★";
+  color: #e8c9ff;
+}
+.guide-track {
+  position: relative;
+  flex: 1;
+  border-bottom: 1px solid #493c55;
+}
+.guide-program {
+  position: absolute;
+  top: 4px;
+  height: 102px;
+  min-width: 0;
+  border: 0 !important;
+  box-shadow: inset 0 0 0 1px #695576;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  background: #25202f;
+  text-align: left;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.guide-program strong,
+.guide-program span,
+.guide-program small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guide-program strong {
+  font-size: 17px;
+}
+.guide-program span {
+  font-size: 14px;
+  color: #d1c5dc;
+}
+.guide-program small {
+  font-size: 12px;
+  color: #c1b4cc;
+}
+.guide-program.past {
+  background: #17151e;
+  color: #c4bdcd;
+}
+.guide-program.current {
+  background: linear-gradient(130deg, #42314f, #272032);
+}
+.guide-program:focus-visible {
+  outline: 4px solid #f1d7ff !important;
+  outline-offset: -4px;
+  z-index: 2;
+  background: #5a426c;
+}
+.guide-program progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+}
+.on-air {
+  color: #ecd0ff !important;
+}
+.now-line {
+  position: absolute;
+  top: 60px;
+  border-left: 2px solid #efb5ff;
+  z-index: 2;
+  pointer-events: none;
+}
+.now-label {
+  position: absolute;
+  top: 35px;
+  color: #25192b;
+  background: #efb5ff;
+  font-size: 11px;
+  padding: 2px 6px;
+  transform: translateX(-50%);
+  z-index: 6;
+}
+.guide-gap {
+  display: block;
+  padding: 35px;
+  color: #b5a9bd;
+}
+.guide-empty {
+  padding: 50px;
+  background: #211a2b;
+  border-radius: 20px;
+}
+.tv-dialog {
+  position: fixed;
+  inset: 4vh 4vw;
+  z-index: 100;
+  background: rgba(20, 16, 27, 0.97);
+  backdrop-filter: blur(20px);
+  border: 1px solid #73617d;
+  border-radius: 24px;
+  padding: 26px;
+  overflow: auto;
+  box-shadow: 0 20px 100px #000;
+}
+.dialog-close {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 20px;
+}
+.detail-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.12;
+  pointer-events: none;
+}
+.detail-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(160px, 26%) 1fr;
+  gap: 36px;
+  align-items: start;
+  padding: 20px;
+}
+.detail-content h1 {
+  font-size: clamp(2rem, 4vw, 4rem);
+  margin: 10px 0;
+}
+.detail-content h2 {
+  font-size: 1.4rem;
+}
+.detail-content p {
+  line-height: 1.6;
+  color: #d3cbdc;
+}
+.detail-poster {
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: 12px;
+}
+.detail-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mini-guide {
+  left: auto;
+  right: 3vw;
+  width: min(620px, 94vw);
+  inset-block: 5vh;
+}
+.mini-guide > div > button {
+  display: flex;
+  width: 100%;
+  gap: 18px;
+  text-align: left;
+  margin: 8px 0;
+  padding: 18px;
+  background: #211b2d;
+}
+.mini-guide img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.mini-guide span span,
+.mini-guide strong,
+.mini-guide small {
+  display: block;
+  margin-bottom: 6px;
+}
+.mini-guide span {
+  flex: 1;
+}
+.mini-guide .mini-selected {
+  border-color: #d5b5f2;
+}
+.player-guide {
+  inset: 2vh 2vw;
+  padding: 16px;
+  background: rgba(15, 11, 22, 0.95);
+}
+.player-guide .guide-screen {
+  padding: 0;
+}
+.viewer-group-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.viewer-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.on-now-card .program-art {
+  height: 170px;
+  width: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+}
+.on-now-card .channel-badge {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.starting-list {
+  display: flex;
+  gap: 18px;
+  overflow: auto;
+  padding: 8px;
+}
+.starting-list article {
+  min-width: 280px;
+  max-width: 380px;
+  padding: 20px;
+  background: #211b2c;
+  border: 1px solid #51405c;
+  border-radius: 16px;
+}
+.tv-dialog button:focus-visible,
+.guide-screen button:focus-visible {
+  outline: 3px solid #efd9ff;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .guide-screen {
+    padding: 8px 0;
+  }
+  .guide-toolbar span {
+    display: none;
+  }
+  .guide-viewport {
+    height: 60vh;
+  }
+  .guide-channel {
+    width: var(--channel-width);
+  }
+  .guide-days button {
+    padding: 10px;
+  }
+  .detail-content {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+  .detail-poster {
+    display: none;
+  }
+  .tv-dialog {
+    inset: 10px;
+    padding: 18px;
+  }
+  .guide-program strong {
+    font-size: 16px;
+  }
+  .player-guide {
+    padding: 10px;
+  }
+  .guide-heading h1 {
+    font-size: 2rem;
+  }
+  .mini-guide {
+    width: auto;
+  }
+  .guide-viewport {
+    scroll-padding-left: 245px;
+  }
+}
+
+@media (max-width: 700px) {
+  .guide-screen {
+    --channel-width: 150px;
+  }
+  .guide-channel {
+    padding: 8px;
+    gap: 6px;
+  }
+  .guide-channel img {
+    width: 28px;
+    height: 28px;
+  }
+  .guide-channel span {
+    font-size: 12px;
+  }
+  .guide-corner {
+    padding: 18px 8px;
+  }
+  .guide-viewport {
+    scroll-padding-left: 155px;
+  }
+}
+
+.dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: #0007;
+}
+.guide-days {
+  position: relative;
+}
+.now-label {
+  transform: none;
+}
+.viewer-home > .primary {
+  margin-right: 12px;
+}
+.dialog-close {
+  position: sticky;
+  top: 0;
+  background: #261e30;
+  z-index: 10;
+}
+.guide-program strong {
+  font-size: 19px;
+}
+.guide-channel strong {
+  font-size: 19px;
+}

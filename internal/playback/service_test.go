@@ -215,3 +215,47 @@ func TestDisabledMissingAndInvalidRequests(t *testing.T) {
 		t.Fatal("invalid mode")
 	}
 }
+
+func TestCatchUpIdentityAndHistorySafety(t *testing.T) {
+	s, _ := playbackFixture(t)
+	ctx := context.Background()
+	s.Now = func() time.Time { return time.UnixMilli(2000000000000 + 4000000) }
+	r := tuneRequest(t, s)
+	r.ProgramID = "a"
+	r.Mode = "FROM_BEGINNING"
+	v, e := s.Tune(ctx, "u", "auth", r)
+	if e != nil || v.Position != 0 || v.Origin != "CATCH_UP" || v.Program.ID != "a" {
+		t.Fatal(v, e)
+	}
+	u, e := s.Heartbeat(ctx, "u", v.ID, Heartbeat{Position: 100, State: "PLAYING"})
+	if e != nil || u.Transition || u.Mode == "LIVE" {
+		t.Fatal(u, e)
+	}
+	live, e := s.GoLive(ctx, "u", "auth", v.ID)
+	if e != nil || live.Program.ID != "b" || live.Mode != "LIVE" {
+		t.Fatal(live, e)
+	}
+	var count int
+	s.db.QueryRow("SELECT count(*) FROM channel_programs").Scan(&count)
+	if count != 3 {
+		t.Fatal(count)
+	}
+	var last string
+	s.db.QueryRow("SELECT last_channel_id FROM viewer_preferences WHERE user_id='u'").Scan(&last)
+	if last != r.ChannelID {
+		t.Fatal(last)
+	}
+	r.ProgramID = "c"
+	if _, e = s.Tune(ctx, "u", "auth", r); e == nil {
+		t.Fatal("future program accepted")
+	}
+	r.ProgramID = "expired"
+	if _, e = s.Tune(ctx, "u", "auth", r); e == nil {
+		t.Fatal("expired program accepted")
+	}
+	r.ProgramID = "a"
+	s.db.Exec("UPDATE plex_media_items SET available=0")
+	if _, e = s.Tune(ctx, "u", "auth", r); e == nil {
+		t.Fatal("missing catchup accepted")
+	}
+}

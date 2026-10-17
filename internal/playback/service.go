@@ -114,12 +114,33 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if e != nil {
 		return out, e
 	}
-	p, e := s.schedule.GetProgramAt(ctx, c.ID, s.Now())
+	origin := "LIVE"
+	var p *scheduler.Entry
+	if r.ProgramID != "" {
+		if r.Mode != "FROM_BEGINNING" {
+			return out, failure("INVALID", "A selected program can only be started from beginning")
+		}
+		p, e = s.schedule.Program(ctx, c.ID, r.ProgramID)
+	} else {
+		p, e = s.schedule.GetProgramAt(ctx, c.ID, s.Now())
+	}
 	if e != nil {
 		return out, e
 	}
 	if p == nil {
+		if r.ProgramID != "" {
+			return out, failure("NOT_FOUND", "This program is no longer retained in the guide")
+		}
 		return out, failure("EMPTY", "No program is scheduled now. Ask an administrator to generate this channel's schedule")
+	}
+	if p.Start > s.Now().UnixMilli() {
+		return out, failure("INVALID", "This program has not aired yet")
+	}
+	if r.Mode == "FROM_BEGINNING" {
+		origin = "CURRENT_FROM_BEGINNING"
+		if p.End <= s.Now().UnixMilli() {
+			origin = "CATCH_UP"
+		}
 	}
 	if !p.Available {
 		return out, failure("NOT_FOUND", "This program is currently unavailable")
@@ -146,7 +167,7 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 		return out, e
 	}
 	now := s.Now()
-	if now.UnixMilli() >= p.End {
+	if r.Mode == "LIVE" && now.UnixMilli() >= p.End {
 		resolved.Source.Close(context.Background())
 		return out, failure("BOUNDARY", "The program just changed. Retry to join the next program")
 	}
@@ -162,10 +183,16 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if r.Mode == "FROM_BEGINNING" {
 		position = 0
 	}
-	out = Tune{ID: id, Channel: c, Program: *p, Next: next, Mode: r.Mode, State: "STARTING", ServerTime: now.UnixMilli(), LiveOffset: offset, Position: position, Duration: resolved.Duration, StreamURL: "/api/v1/playback/" + id + "/stream/main", Mime: resolved.Mime, Delivery: resolved.Mode, AddedAt: resolved.AddedAt}
-	_, e = s.db.ExecContext(ctx, `INSERT INTO viewing_sessions(id,user_id,channel_id,program_id,media_item_id,plex_server_id,auth_session_hash,started_at,last_seen_at,playback_mode,scheduled_live_offset_ms,current_position_ms,state,client_identifier,client_type,delivery_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, user, c.ID, p.ID, p.MediaID, resolved.ServerID, auth, now.UnixMilli(), now.UnixMilli(), r.Mode, offset, position, "STARTING", r.ClientID, r.Capabilities.ClientType, resolved.Mode)
+	out = Tune{Origin: origin, ID: id, Channel: c, Program: *p, Next: next, Mode: r.Mode, State: "STARTING", ServerTime: now.UnixMilli(), LiveOffset: offset, Position: position, Duration: resolved.Duration, StreamURL: "/api/v1/playback/" + id + "/stream/main", Mime: resolved.Mime, Delivery: resolved.Mode, AddedAt: resolved.AddedAt}
+	_, e = s.db.ExecContext(ctx, `INSERT INTO viewing_sessions(id,user_id,channel_id,program_id,media_item_id,plex_server_id,auth_session_hash,started_at,last_seen_at,playback_mode,scheduled_live_offset_ms,current_position_ms,state,client_identifier,client_type,delivery_mode,origin) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, user, c.ID, p.ID, p.MediaID, resolved.ServerID, auth, now.UnixMilli(), now.UnixMilli(), r.Mode, offset, position, "STARTING", r.ClientID, r.Capabilities.ClientType, resolved.Mode, origin)
 	if e != nil {
 		resolved.Source.Close(context.Background())
+		return Tune{}, e
+	}
+	_, e = s.db.ExecContext(ctx, `INSERT INTO viewer_preferences(user_id,last_channel_id,updated_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET last_channel_id=excluded.last_channel_id,updated_at=excluded.updated_at`, user, c.ID, now.UnixMilli())
+	if e != nil {
+		resolved.Source.Close(context.Background())
+		s.db.ExecContext(ctx, "UPDATE viewing_sessions SET state='STOPPED' WHERE id=?", id)
 		return Tune{}, e
 	}
 	streamCtx, cancel := context.WithCancel(context.Background())
@@ -220,7 +247,7 @@ func (s *Service) Heartbeat(ctx context.Context, user, id string, h Heartbeat) (
 	live := Offset(now, v.tune.Program.Start, v.tune.Duration)
 	transition := v.tune.Mode == "LIVE" && h.State == "PLAYING" && now >= v.tune.Program.End
 	mode := v.tune.Mode
-	if !transition {
+	if !transition && v.tune.Origin != "CATCH_UP" {
 		if h.State == "PAUSED" || math.Abs(float64(position-live)) > 10000 || now >= v.tune.Program.End {
 			if mode != "FROM_BEGINNING" {
 				mode = "BEHIND_LIVE"

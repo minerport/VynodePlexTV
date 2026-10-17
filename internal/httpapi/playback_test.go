@@ -57,7 +57,7 @@ func TestPlaybackHTTPAuthorizationAndLogout(t *testing.T) {
 		}
 		return w
 	}
-	for _, p := range []string{"/on-now", "/playback/active", "/playback/id/stream/main", "/watch/channels/id/artwork/logo"} {
+	for _, p := range []string{"/on-now", "/playback/active", "/playback/id/stream/main", "/watch/channels/id/artwork/logo", "/guide/on-now", "/users/me/favorites"} {
 		call("GET", p, "", 401)
 	}
 	creds := `{"username":"owner","password":"test-long-password"}`
@@ -85,9 +85,15 @@ func TestPlaybackHTTPAuthorizationAndLogout(t *testing.T) {
 	exec("UPDATE users SET role='USER'")
 	call("GET", "/playback/active", "", 403)
 	call("GET", "/on-now", "", 200)
+	call("GET", "/guide/on-now", "", 200)
+	call("GET", "/guide/programs/p", "", 200)
+	call("POST", "/users/me/favorites/"+channel.ID, "{}", 200)
+	call("GET", "/users/me/favorites", "", 200)
+	call("DELETE", "/users/me/favorites/"+channel.ID, "{}", 200)
 	saved := csrf
 	csrf = ""
 	call("POST", "/playback/tune", body, 403)
+	call("POST", "/users/me/favorites/"+channel.ID, "{}", 403)
 	csrf = saved
 	w = call("POST", "/playback/tune", body, 201)
 	var tune playback.Tune
@@ -99,6 +105,7 @@ func TestPlaybackHTTPAuthorizationAndLogout(t *testing.T) {
 	call("GET", "/playback/active", "", 200)
 	exec("UPDATE channels SET enabled=0")
 	call("POST", "/playback/tune", body, 404)
+	call("GET", "/guide/programs/p", "", 404)
 	call("GET", "/playback/"+tune.ID+"/stream/main", "", 404)
 	exec("UPDATE channels SET enabled=1")
 	call("POST", "/auth/logout", "{}", 200)

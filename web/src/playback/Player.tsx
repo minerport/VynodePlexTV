@@ -1,18 +1,40 @@
+import { MiniGuide } from "../guide/MiniGuide";
+import { GuideGrid } from "../guide/GuideGrid";
+import { ProgramDetails } from "../guide/ProgramDetails";
+import { Dialog, FavoriteButton } from "../guide/Dialog";
+import { guideAPI } from "../guide/api";
+import "../guide/guide.css";
 import { useEffect, useRef, useState } from "react";
 import { playbackAPI, watch, type OnNow } from "./api";
 import { PlayerController, type PlayerState } from "./controller";
 import "./player.css";
 export function Player({
   channelId,
+  programId,
   csrf,
   userId,
   onExit,
 }: {
   channelId: string;
+  programId?: string;
   csrf: string;
   userId?: string;
   onExit: () => void;
 }) {
+  const [panel, setPanel] = useState<"mini" | "guide" | "details" | null>(null);
+  const [favorite, setFavorite] = useState(false);
+  useEffect(() => {
+    guideAPI
+      .favorites()
+      .then((v) => setFavorite(v.channelIds.includes(channelId)))
+      .catch(() => {});
+  }, [channelId]);
+  function tuneOverlay(id: string, p?: string) {
+    setPanel(null);
+    if (id === channelId)
+      void controller.current?.tune(id, p ? "FROM_BEGINNING" : "LIVE", p);
+    else watch(id, p);
+  }
   const video = useRef<HTMLVideoElement>(null),
     controller = useRef<PlayerController | null>(null);
   const [state, setState] = useState<PlayerState>({
@@ -55,8 +77,12 @@ export function Player({
     };
   }, [csrf]);
   useEffect(() => {
-    void controller.current?.tune(channelId);
-  }, [channelId]);
+    void controller.current?.tune(
+      channelId,
+      programId ? "FROM_BEGINNING" : "LIVE",
+      programId,
+    );
+  }, [channelId, programId]);
   useEffect(() => {
     if (userId && state.tune)
       localStorage.setItem(
@@ -83,7 +109,18 @@ export function Player({
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (panel || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey)
+        return;
+      if (e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        setPanel("mini");
+        return;
+      }
+      if (e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        setPanel("details");
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         onExit();
@@ -186,7 +223,10 @@ export function Player({
           )}
         </div>
       )}
-      <div className={`player-chrome ${show ? "shown" : ""}`} inert={!show}>
+      <div
+        className={`player-chrome ${show ? "shown" : ""}`}
+        inert={!show || !!panel}
+      >
         <button className="player-exit" onClick={onExit}>
           ← Exit player
         </button>
@@ -199,13 +239,15 @@ export function Player({
             <div>
               <p>{channel?.name ?? "Your channel"}</p>
               <small>
-                {t?.mode === "LIVE"
-                  ? "● LIVE"
-                  : t?.mode === "FROM_BEGINNING"
-                    ? "FROM BEGINNING"
-                    : t
-                      ? `−${Math.max(1, Math.round((t.liveOffsetMs - t.positionMs) / 60000))}m · BEHIND LIVE`
-                      : "CONNECTING"}
+                {t?.origin === "CATCH_UP"
+                  ? "CATCH-UP"
+                  : t?.mode === "LIVE"
+                    ? "● LIVE"
+                    : t?.mode === "FROM_BEGINNING"
+                      ? "FROM BEGINNING"
+                      : t
+                        ? `−${Math.max(1, Math.round((t.liveOffsetMs - t.positionMs) / 60000))}m · BEHIND LIVE`
+                        : "CONNECTING"}
               </small>
             </div>
           </div>
@@ -244,7 +286,7 @@ export function Player({
             />
           )}
           <p className="next-program">
-            NEXT ·{" "}
+            {t?.origin === "CATCH_UP" ? "ON LIVE CHANNEL NEXT" : "NEXT"} ·{" "}
             {t?.next?.title ?? selected?.next?.title ?? "Schedule unavailable"}
           </p>
           <div ref={controls} className="player-controls">
@@ -255,7 +297,11 @@ export function Player({
             <button
               disabled={!t}
               onClick={() =>
-                void controller.current?.tune(channelId, "FROM_BEGINNING")
+                void controller.current?.tune(
+                  channelId,
+                  "FROM_BEGINNING",
+                  t?.program.id,
+                )
               }
             >
               Watch From Beginning
@@ -267,6 +313,17 @@ export function Player({
               Go Live
             </button>
             <button onClick={() => switchChannel(1)}>Channel +</button>
+            <button onClick={() => setPanel("mini")}>Mini-guide</button>
+            <button onClick={() => setPanel("guide")}>Full Guide</button>
+            <button disabled={!t} onClick={() => setPanel("details")}>
+              Program Details
+            </button>
+            <FavoriteButton
+              id={channelId}
+              favorite={favorite}
+              csrf={csrf}
+              onChange={setFavorite}
+            />
             <button
               onClick={() =>
                 void document.documentElement
@@ -295,10 +352,60 @@ export function Player({
           )}
           <small>
             ↑ ↓ Channel · Space Play / Pause · ← → Controls · Enter Select · Esc
-            Exit · Type a channel number
+            Exit · G Mini-guide · I Details · Type a channel number
           </small>
         </section>
       </div>
+      {panel === "mini" && (
+        <MiniGuide
+          channelId={channelId}
+          onClose={() => {
+            setPanel(null);
+            reveal();
+          }}
+          onTune={(id) => {
+            tuneOverlay(id);
+          }}
+        />
+      )}
+      {panel === "guide" && (
+        <Dialog
+          label="Full Guide"
+          className="player-guide"
+          onClose={() => {
+            setPanel(null);
+            reveal();
+          }}
+        >
+          <GuideGrid
+            csrf={csrf}
+            userId={userId ?? "viewer"}
+            initialChannel={channelId}
+            onTune={(id, p) => {
+              tuneOverlay(id, p);
+            }}
+          />
+        </Dialog>
+      )}
+      {panel === "details" && t && (
+        <ProgramDetails
+          id={t.program.id}
+          csrf={csrf}
+          onClose={() => {
+            setPanel(null);
+            reveal();
+          }}
+          onTune={(id, p) => {
+            setPanel(null);
+            void controller.current?.tune(id, p ? "FROM_BEGINNING" : "LIVE", p);
+          }}
+          onFavorite={() =>
+            guideAPI
+              .favorites()
+              .then((v) => setFavorite(v.channelIds.includes(channelId)))
+          }
+        />
+      )}
     </main>
   );
 }

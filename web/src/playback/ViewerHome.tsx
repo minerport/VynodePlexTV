@@ -1,3 +1,9 @@
+import { chooseGuideGroup } from "../guide/GuideGrid";
+import { guideAPI, type WindowData, type Program } from "../guide/api";
+import { ProgramDetails } from "../guide/ProgramDetails";
+import { FavoriteButton } from "../guide/Dialog";
+import { timeLabel } from "../guide/timeline";
+import "../guide/guide.css";
 import { useEffect, useState, type ReactNode } from "react";
 import { request } from "../api";
 import { playbackAPI, watch, type OnNow } from "./api";
@@ -5,13 +11,37 @@ import "./player.css";
 export function ViewerHome({
   fallback,
   userId,
+  csrf = "",
 }: {
   fallback: ReactNode;
   userId: string;
+  csrf?: string;
 }) {
   const [items, setItems] = useState<OnNow[] | null>(null);
   const [error, setError] = useState("");
-  const last = localStorage.getItem(`afterglow-last-channel-${userId}`);
+  const [last, setLast] = useState(
+    localStorage.getItem(`afterglow-last-channel-${userId}`),
+  );
+  const [favorites, setFavorites] = useState<string[]>([]),
+    [soon, setSoon] = useState<WindowData | null>(null),
+    [details, setDetails] = useState<string | null>(null);
+  const refreshFavorites = () =>
+    guideAPI.favorites().then((v) => setFavorites(v.channelIds));
+  useEffect(() => {
+    void guideAPI
+      .last()
+      .then((v) => setLast(v.channelId))
+      .catch(() => {});
+    void refreshFavorites().catch(() => {});
+    const load = () =>
+      guideAPI
+        .soon()
+        .then(setSoon)
+        .catch(() => {});
+    void load();
+    const t = setInterval(() => void load(), 30000);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -49,7 +79,20 @@ export function ViewerHome({
     <div className="on-now-grid">
       {list.map((v) => (
         <article className="on-now-card" key={v.channel.id}>
-          <img src={v.channel.logo} alt="" loading="lazy" />
+          {v.program?.artwork && (
+            <img
+              className="program-art"
+              src={v.program.artwork}
+              alt=""
+              loading="lazy"
+            />
+          )}
+          <img
+            className="channel-badge"
+            src={v.channel.logo}
+            alt=""
+            loading="lazy"
+          />
           <span className="eyebrow">
             {v.channel.number} · {v.channel.name}
           </span>
@@ -63,13 +106,24 @@ export function ViewerHome({
           )}
           <progress max="100" value={v.progress} />
           <p>Next · {v.next?.title ?? "Not scheduled"}</p>
-          <button
-            className="primary"
-            disabled={!v.program}
-            onClick={() => tune(v.channel.id)}
-          >
-            Watch Live
-          </button>
+          <div className="viewer-card-actions">
+            <button
+              className="primary"
+              disabled={!v.program}
+              onClick={() => tune(v.channel.id)}
+            >
+              Watch Live
+            </button>
+            {v.program && (
+              <button onClick={() => setDetails(v.program!.id)}>Details</button>
+            )}
+            <FavoriteButton
+              id={v.channel.id}
+              favorite={favorites.includes(v.channel.id)}
+              csrf={csrf}
+              onChange={() => void refreshFavorites()}
+            />
+          </div>
         </article>
       ))}
     </div>
@@ -83,6 +137,14 @@ export function ViewerHome({
         <em>Already on.</em>
       </h1>
       <p>Pick a channel. Settle into the moment.</p>
+      <button
+        className="primary"
+        onClick={() => {
+          window.location.hash = "guide";
+        }}
+      >
+        Open Live Guide
+      </button>
       {items.some((v) => v.channel.id === last) && (
         <button className="primary" onClick={() => tune(last!)}>
           Watch Last Channel
@@ -91,11 +153,63 @@ export function ViewerHome({
       {error && <p role="status">{error}</p>}
       <h2 className="on-now-heading">On Now</h2>
       {cards(items.filter((v) => !v.channel.recentKind))}
+      <h2 className="on-now-heading">Favorite Channels</h2>
+      {favorites.length ? (
+        cards(items.filter((v) => favorites.includes(v.channel.id)))
+      ) : (
+        <p>Choose ☆ on a channel to make it yours.</p>
+      )}
+      <h2 className="on-now-heading">Starting Soon</h2>
+      <div className="starting-list">
+        {soon?.channels
+          .flatMap((c) => c.programs.map((p) => ({ c, p })))
+          .sort((a, b) => a.p.start - b.p.start)
+          .map(
+            ({ c, p }: { c: WindowData["channels"][number]; p: Program }) => (
+              <article key={p.id}>
+                <span>
+                  {c.number} · {c.name}
+                </span>
+                <h3>{p.showTitle || p.title}</h3>
+                <p>{timeLabel(p.start, soon.timezone)}</p>
+                <button onClick={() => setDetails(p.id)}>View Details</button>
+              </article>
+            ),
+          )}
+      </div>
+      {soon && !soon.channels.some((c) => c.programs.length) && (
+        <p>
+          No programs start in the next 30 minutes. Settle into what is on now.
+        </p>
+      )}
+      <h2 className="on-now-heading">Channel Groups</h2>
+      <div className="viewer-group-row">
+        {soon?.groups.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => {
+              chooseGuideGroup(userId, g.id);
+              window.location.hash = "guide";
+            }}
+          >
+            {g.name}
+          </button>
+        ))}
+      </div>
       {items.some((v) => v.channel.recentKind) && (
         <>
           <h2 className="on-now-heading">Fresh in your collection</h2>
           {cards(items.filter((v) => !!v.channel.recentKind))}
         </>
+      )}
+      {details && (
+        <ProgramDetails
+          id={details}
+          csrf={csrf}
+          onClose={() => setDetails(null)}
+          onTune={watch}
+          onFavorite={() => void refreshFavorites()}
+        />
       )}
     </section>
   );

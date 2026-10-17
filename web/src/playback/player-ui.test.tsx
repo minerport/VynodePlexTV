@@ -27,6 +27,7 @@ vi.mock("./controller", () => ({
             id: "s",
             channel: { id: "a", number: "101", name: "Cinema", recentKind: "" },
             program: {
+              id: "program-a",
               title: "Film",
               showTitle: "",
               start: 100,
@@ -78,9 +79,9 @@ it("renders overlay and maps playback controls, channel keys and exit", async ()
   expect(await screen.findByText("Film")).toBeInTheDocument();
   expect(screen.getByText("NEXT · Next film")).toBeInTheDocument();
   expect(screen.getByText("● LIVE")).toBeInTheDocument();
-  expect(mock.tune).toHaveBeenCalledWith("a");
+  expect(mock.tune).toHaveBeenCalledWith("a", "LIVE", undefined);
   fireEvent.click(screen.getByText("Watch From Beginning"));
-  expect(mock.tune).toHaveBeenCalledWith("a", "FROM_BEGINNING");
+  expect(mock.tune).toHaveBeenCalledWith("a", "FROM_BEGINNING", "program-a");
   fireEvent.click(screen.getByText("Go Live"));
   expect(mock.goLive).toHaveBeenCalled();
   fireEvent.keyDown(window, { key: "ArrowUp" });

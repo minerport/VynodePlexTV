@@ -51,6 +51,7 @@ type OnNow struct {
 	Progress float64          `json:"progress"`
 }
 type TuneRequest struct {
+	ProgramID      string            `json:"programId,omitempty"`
 	ChannelID      string            `json:"channelId"`
 	Mode           string            `json:"mode"`
 	ClientID       string            `json:"clientId"`
@@ -58,6 +59,7 @@ type TuneRequest struct {
 	ReplaceSession string            `json:"replaceSession,omitempty"`
 }
 type Tune struct {
+	Origin     string           `json:"origin"`
 	ID         string           `json:"id"`
 	Channel    Channel          `json:"channel"`
 	Program    scheduler.Entry  `json:"program"`

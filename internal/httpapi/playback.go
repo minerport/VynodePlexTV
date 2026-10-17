@@ -175,7 +175,11 @@ func (a *API) playbackRoutes(mux *http.ServeMux) {
 			problem(w, 404, "Artwork unavailable")
 			return
 		}
-		v, e := a.plex.Artwork(r.Context(), media, "poster")
+		kind := "poster"
+		if r.URL.Query().Get("kind") == "background" {
+			kind = "background"
+		}
+		v, e := a.plex.Artwork(r.Context(), media, kind)
 		if e != nil {
 			a.plexError(w, e)
 			return

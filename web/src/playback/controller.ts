@@ -37,8 +37,11 @@ export class PlayerController {
   private stalled: ReturnType<typeof setTimeout> | null = null;
   private ended = false;
   private target = "";
+  private targetProgram: string | undefined;
   private force = false;
-  private client = crypto.randomUUID();
+  private client = Array.from(crypto.getRandomValues(new Uint8Array(16)), (v) =>
+    v.toString(16).padStart(2, "0"),
+  ).join("");
   private listeners: [string, EventListener][] = [];
   constructor(
     private video: HTMLVideoElement,
@@ -85,7 +88,8 @@ export class PlayerController {
     this.video.removeAttribute("src");
     this.video.load();
   }
-  async tune(channel: string, mode = "LIVE") {
+  async tune(channel: string, mode = "LIVE", programId?: string) {
+    this.targetProgram = programId;
     this.target = channel;
     const epoch = ++this.epoch;
     const old = this.state.tune;
@@ -105,6 +109,7 @@ export class PlayerController {
         { ...capabilities(this.video), forceTranscode: this.force },
         this.csrf,
         old?.id,
+        programId,
       );
       if (this.disposed || epoch !== this.epoch) {
         await playbackAPI.stop(result.id, this.csrf);
@@ -221,6 +226,7 @@ export class PlayerController {
     }
   }
   async goLive() {
+    this.targetProgram = undefined;
     const t = this.state.tune;
     if (!t) return this.tune(this.target);
     const epoch = ++this.epoch;
@@ -247,6 +253,7 @@ export class PlayerController {
       await this.tune(
         this.target,
         this.state.tune.mode === "FROM_BEGINNING" ? "FROM_BEGINNING" : "LIVE",
+        this.targetProgram,
       );
       return;
     }
@@ -257,7 +264,11 @@ export class PlayerController {
     });
   }
   retry() {
-    return this.tune(this.target);
+    return this.tune(
+      this.target,
+      this.targetProgram ? "FROM_BEGINNING" : "LIVE",
+      this.targetProgram,
+    );
   }
   dispose() {
     this.disposed = true;
