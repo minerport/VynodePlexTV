@@ -31,7 +31,7 @@ test("complete owner journey, remote navigation, logout, and container persisten
     path: "test-results/live-desktop.png",
     fullPage: true,
   });
-  const nav = page.getByRole("navigation");
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
   await nav.getByRole("link", { name: "Live TV", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(
@@ -51,8 +51,99 @@ test("complete owner journey, remote navigation, logout, and container persisten
   ).toBeVisible();
   await nav.getByRole("link", { name: "Plex Setup", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Plex connection is coming next" }),
+    page.getByRole("heading", { name: "Your library. Center stage." }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Add Plex server" }).click();
+  await page.getByLabel("Server URL").fill("http://plex-fixture:32400");
+  await page
+    .getByLabel("Plex token", { exact: true })
+    .fill(process.env.PLEX_FIXTURE_TOKEN!);
+  await page
+    .getByRole("button", { name: "Test connection", exact: true })
+    .click();
+  await expect(page.getByText("Connected to Test Cinema")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Connect server", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Test Cinema", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Libraries", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Test Movies", exact: true }),
+  ).toBeVisible({ timeout: 15000 });
+  for (const name of ["Test Movies", "Test TV"]) {
+    const row = page
+      .locator(".library-row")
+      .filter({ has: page.getByRole("heading", { name, exact: true }) });
+    await row
+      .getByRole("button", { name: "Select library", exact: true })
+      .click();
+    await expect(
+      row.getByRole("button", { name: "Selected", exact: true }),
+    ).toBeVisible();
+  }
+  await page
+    .getByRole("button", { name: "Sync selected", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Media browser", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get("/api/v1/media");
+        return (await response.json()).total;
+      },
+      { timeout: 20000 },
+    )
+    .toBe(4);
+  await page.getByRole("button", { name: "Jobs", exact: true }).click();
+  await expect(page.getByText("SUCCEEDED").first()).toBeVisible();
+  await page
+    .getByRole("button", { name: "Media browser", exact: true })
+    .click();
+  await expect(page.getByText("Test Movie", { exact: true })).toBeVisible();
+  await expect(page.locator(".media-card")).toHaveCount(2);
+  await page.locator(".media-card").filter({ hasText: "Test Show" }).click();
+  await page.locator(".media-card").filter({ hasText: "Season One" }).click();
+  await page.locator(".media-card").filter({ hasText: "Test Episode" }).click();
+  await expect(
+    page.getByRole("region", { name: "Media details" }),
+  ).toContainText("Test Episode");
+  await page
+    .getByRole("navigation", { name: "TV library hierarchy" })
+    .getByRole("button", { name: "Test Show", exact: true })
+    .click();
+  await expect(page.locator(".media-card")).toContainText("Season One");
+  await page
+    .getByRole("navigation", { name: "TV library hierarchy" })
+    .getByRole("button", { name: "Movies & shows" })
+    .click();
+  await expect(page.locator(".media-card")).toHaveCount(2);
+  const movie = page.locator(".media-card").filter({ hasText: "Test Movie" });
+  await expect
+    .poll(() =>
+      movie
+        .locator("img")
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await movie.click();
+  await expect(
+    page.getByRole("region", { name: "Media details" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .getByAltText("Background artwork")
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await page.screenshot({
+    path: "test-results/plex-media.png",
+    fullPage: true,
+  });
   await nav.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByLabel("Television name").fill("Evening room");
   await page.getByLabel("Guide timezone").fill("America/New_York");
@@ -80,6 +171,56 @@ test("complete owner journey, remote navigation, logout, and container persisten
   await expect(page.getByLabel("Guide timezone")).toHaveValue(
     "America/New_York",
   );
+  await nav.getByRole("link", { name: "Plex Setup", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Test Cinema", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Test", exact: true }).click();
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get("/api/v1/jobs");
+        const jobs = await response.json();
+        return jobs.find(
+          (job: { type: string; status: string }) =>
+            job.type === "PLEX_HEALTH_CHECK",
+        )?.status;
+      },
+      { timeout: 15000 },
+    )
+    .toBe("SUCCEEDED");
+  await page
+    .getByRole("button", { name: "Sync selected", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get("/api/v1/jobs");
+        const jobs = await response.json();
+        return jobs.filter(
+          (job: { type: string; status: string }) =>
+            job.type === "PLEX_LIBRARY_SYNC" &&
+            ["RUNNING", "QUEUED"].includes(job.status),
+        ).length;
+      },
+      { timeout: 15000 },
+    )
+    .toBe(0);
+  const inventory = await (await page.request.get("/api/v1/media")).json();
+  expect(inventory.total).toBe(4);
+  await page
+    .getByRole("button", { name: "Media browser", exact: true })
+    .click();
+  await expect(page.getByText("Test Movie", { exact: true })).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".media-card img")
+        .first()
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await nav.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(
     page.getByRole("heading", { name: "Welcome back." }),

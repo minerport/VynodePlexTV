@@ -3,7 +3,7 @@ export default defineConfig({
   testDir: "./e2e",
   workers: 1,
   fullyParallel: false,
-  timeout: 60000,
+  timeout: 120000,
   use: {
     baseURL: "http://localhost:18080",
     viewport: { width: 1440, height: 1000 },

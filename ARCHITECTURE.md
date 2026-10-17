@@ -1,6 +1,6 @@
 # Afterglow TV — architecture
 
-An independent, self-hosted television experience powered by Plex. This repository has no relationship to or dependency on VyNode Media. Phase 0 establishes the runnable foundation; no Plex, schedule, or playback behavior is simulated.
+An independent, self-hosted television experience powered by Plex. This repository has no relationship to or dependency on VyNode Media. Phase 0 established the foundation; Phase 1 adds real Plex inventory services. No schedule or playback behavior is simulated.
 
 ## Repository
 
@@ -9,7 +9,7 @@ cmd/server/                     process startup and graceful shutdown
 internal/config/                environment configuration
 internal/database/migrations/   embedded, ordered SQL migrations
 internal/httpapi/               versioned routes, auth, middleware
-internal/plex/                  application-owned Phase 1 interface
+internal/plex/                  Plex adapter, encrypted server service, inventory/jobs/cache/linking
 internal/scheduler/             application-owned future scheduling interface
 web/src/                       React TV shell and API client
 web/e2e/                       browser functional tests
@@ -19,7 +19,7 @@ compose.yaml                   persistent /config deployment
 
 ## Boundaries
 
-The Go process owns authentication, authorization, configuration, SQLite and all future business logic. React owns presentation, input/focus behavior, and explicit loading/empty/error states. It accesses only `/api/v1`; it never reads SQLite or receives Plex secrets. The production process serves the built SPA and API from one origin. Vite proxies `/api` in development. Native clients can use the same versioned JSON API; their authentication transport will be specified before implementation.
+The Go process owns authentication, authorization, configuration, SQLite and all business logic. React owns presentation, input/focus behavior, and explicit loading/empty/error states. It accesses only `/api/v1`; it never reads SQLite or receives saved Plex tokens. Manual credential entry is submitted once through a password field, while account linking returns only a short-lived Plex authorization URL and sanitized server choices. The production process serves the built SPA and API from one origin. Vite proxies `/api` in development. Native clients can use the same versioned JSON API; their authentication transport will be specified before implementation.
 
 Phase 0 uses standard-library HTTP, modernc SQLite, bcrypt passwords, opaque cookie sessions and structured JSON logging. Session tokens are generated cryptographically; only SHA-256 token digests are stored. Sessions expire after 24 hours. Every authenticated mutation requires an exact configured Origin and a per-session CSRF token. Logout revokes the session. Setup creates the first OWNER transactionally and becomes unavailable afterward. Login attempts are rate limited. Public responses never contain password hashes or session tokens.
 
@@ -33,7 +33,19 @@ Migration 001 contains only users, user_preferences, sessions, app_settings and 
 
 ## Plex boundary (Phase 1)
 
-`internal/plex.Provider` expresses health, library discovery, paginated normalized media synchronization and artwork access using application-owned types. The HTTP/XML Plex adapter, token storage and source-specific parsing stay behind that interface. A provider is scoped to a configured server; every library and item retains its server ID and Plex source key. Only lightweight required metadata is persisted. Full sync uses a completion marker before deleting missing records; interrupted sync cannot delete valid media. Incremental scans periodically reconcile with a full scan. Authentication, retries, timeouts and errors belong to the adapter. Plex remains authoritative. Tokens must be encrypted at rest with a persistent key in /config before credentials are introduced. Real configurable development credentials are required to validate Phase 1; fixtures supplement rather than replace live checks.
+`internal/plex.Provider` now expresses identity, complete library discovery, bounded pages, detailed normalized metadata and artwork. `Client` alone understands XML, Plex endpoints and headers. `Service` owns server/library persistence, inventory, jobs and cache. HTTP handlers call the service and enforce admin authorization; raw Plex XML and credentials never reach React. The future scheduler remains untouched and independent of these transport models.
+
+Migration 002 adds server/library/media tables, unified metadata entities plus typed relationships, external IDs, normalized versions/parts/streams, jobs, observed-item markers, Plex settings and artwork cache metadata. Metadata entity identity is scoped to Plex server and kind plus a Plex ID when supplied. Missing IDs fall back to server/kind/name identity; this is not a claim that names are globally unique. People use one entity kind with actor/director/writer relationships. Hierarchy retains source parent/grandparent keys with composite indexes. Filesystem paths are internal only. Unsupported library types remain discoverable but cannot be selected.
+
+AES-256-GCM ciphertext is bound to server ID and key version. The separate persistent key and client identifier are generated once in /config/secrets. Missing encryption material with existing credentials prevents startup. Account linking uses Plex's strong PIN flow; it is opt-in per administrator, holds secrets only in bounded memory, expires in at most ten minutes and validates a resource's machine identity before storing its server-specific token. Cloud account access is needed only during optional account linking; direct local operation and manual setup do not depend on a hosted Afterglow service.
+
+One durable worker claims queued jobs and performs sequential, paginated I/O. A scan validates server identity, library UUID/type/revision, explicit totals, offsets and unique observations. Changed metadata is committed per page. Incremental scans still enumerate all identities, skipping detail requests only when source timestamps match. Final missing-item marking, library timestamps and SUCCEEDED status commit in the same transaction after checking cancellation. Failed/cancelled/interrupted work cannot reach that transaction. Restart cancels RUNNING jobs and clears their observation markers; queued work remains durable. Outages retain inventory, and reconnection restores health through scheduled checks or successful sync.
+
+Artwork paths are restricted to relative Plex library paths. Redirects and unexpected content types are rejected. A serialized cache fill avoids duplicate downloads and eviction races; LRU eviction enforces a configurable byte budget. Authentication precedes even browser conditional-image responses. Cached images can survive temporary server failure without implying media availability.
+
+Plex calls use normal TLS verification, five-second connection/TLS limits and twenty-second request limits with at most one short retry for transport/server errors. Authentication failures are not retried. Public errors are fixed safe messages; raw URL errors and upstream bodies are never logged. Frontend status polling is intentionally simpler than introducing SSE without a current need. Real Plex validation remains a distinct gate from deterministic HTTP fixtures.
+
+The transport recognizes only canonical IPv4 plus 32-hex certificate identifier `plex.direct` names for a DNS-failure fallback to the embedded address. The original hostname remains authoritative for TLS SNI, certificate verification and HTTP Host. Other hosts, invalid addresses and non-DNS failures are not rewritten; no public DNS dependency or global resolver change is introduced.
 
 ## Scheduler boundary (future phases)
 
@@ -41,4 +53,4 @@ Migration 001 contains only users, user_preferences, sessions, app_settings and 
 
 ## Deployment and operations
 
-A single non-root container serves port 8080, stores state only under /config and requires no cloud service. Compose maps a named volume to /config and defaults to loopback access for safe initial setup. Health reports process liveness; readiness checks the database. Version is build-injected. JSON logs support DEBUG/INFO/WARN/ERROR and never log request bodies, cookies or query strings. Administrative setup/settings changes are audited. The OpenAPI document describes only implemented routes. Background jobs and SSE updates arrive with their actual consumers in subsequent phases.
+A single non-root container serves port 8080 and stores state only under /config. Compose maps a named volume to /config and defaults to loopback access for safe initial setup. Health reports process liveness; readiness checks the database. Version is build-injected. JSON logs support DEBUG/INFO/WARN/ERROR and never log request bodies, cookies or query strings. Administrative setup/settings/server/library/job changes are audited. The OpenAPI document describes implemented routes only. The Plex worker shuts down with the process; its final cancellation is persisted before SQLite closes.

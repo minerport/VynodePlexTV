@@ -1,0 +1,511 @@
+.plex-page {
+  max-width: 1500px;
+  margin: 20px auto;
+}
+.plex-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+.plex-heading h1 {
+  font-size: 42px;
+  margin: 18px 0;
+}
+.plex-heading p {
+  font-size: 14px;
+}
+.plex-metrics {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding: 25px 0;
+  color: #958b9f;
+  font-size: 12px;
+}
+.plex-metrics strong {
+  color: #dfc9f1;
+  font-size: 20px;
+  margin-right: 6px;
+  font-weight: 500;
+}
+.plex-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 15px;
+  margin-bottom: 25px;
+  overflow-x: auto;
+}
+.plex-tabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.plex-tabs button[aria-current] {
+  background: #c6a7e617;
+  border-color: #c6a7e62c;
+  color: #e0caf3;
+}
+.plex-content:focus {
+  outline: none;
+}
+.plex-toolbar {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.plex-toolbar h2 {
+  font-size: 22px;
+}
+.plex-toolbar h3 {
+  font-size: 16px;
+  font-weight: 550;
+}
+.plex-toolbar span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.server-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+.server-card,
+.connection-form,
+.library-row,
+.job-card,
+.media-detail {
+  background: linear-gradient(130deg, #25202e66, #13151d);
+  border: 1px solid #d4b5ed15;
+  border-radius: 14px;
+  padding: 25px;
+}
+.server-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.card-icon-static {
+  color: #cdb3e4;
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  background: #c4a0df10;
+  border-radius: 12px;
+}
+.connection-status {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #bab0c4;
+  border: 1px solid #a89aaf33;
+  padding: 7px 9px;
+  border-radius: 20px;
+}
+.connection-status.connected {
+  color: #a5d8bf;
+  background: #a5d8bf0b;
+}
+.connection-status.offline,
+.connection-status.unauthorized {
+  color: #e9b2b7;
+  background: #e9b2b70b;
+}
+.connection-status.degraded {
+  color: #e3ce99;
+}
+.server-card h3 {
+  font-size: 21px;
+  font-weight: 500;
+}
+.server-url {
+  font-size: 12px;
+  margin: 8px 0 24px;
+  overflow-wrap: anywhere;
+}
+.server-card dl {
+  margin: 0 0 20px;
+}
+.server-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid #ffffff07;
+  padding: 12px 0;
+  font-size: 12px;
+}
+.server-card dt {
+  color: #8b8296;
+}
+.server-card dd {
+  text-align: right;
+  margin: 0;
+  color: #c4b9ce;
+  overflow-wrap: anywhere;
+}
+.card-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.card-actions button {
+  font-size: 11px;
+  padding: 10px 12px;
+}
+.quiet-danger {
+  color: #d1a0a9;
+  background: transparent;
+}
+.connection-form {
+  margin: 0 0 25px;
+}
+.connection-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+.connection-fields label {
+  margin: 0;
+}
+.connection-form .field-help {
+  margin-top: 20px;
+}
+.plex-help {
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.library-list,
+.job-list {
+  display: grid;
+  gap: 14px;
+}
+.library-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.library-main {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex: 1;
+  min-width: 180px;
+  color: #b99ed1;
+}
+.library-main h3 {
+  color: #e3d7ed;
+  font-size: 18px;
+  font-weight: 500;
+}
+.library-main span,
+.library-summary span {
+  font-size: 11px;
+  color: #93889e;
+  line-height: 1.8;
+}
+.library-summary {
+  display: flex;
+  flex-direction: column;
+}
+.library-summary strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cdbedb;
+}
+.library-row button[aria-pressed="true"] {
+  color: #d6bbec;
+  border-color: #ac8bc34f;
+  background: #ac8bc31a;
+}
+.job-progress {
+  width: 100%;
+}
+.job-progress > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: #c7b6d8;
+}
+.job-progress progress {
+  width: 100%;
+  height: 6px;
+  margin: 15px 0;
+  accent-color: #caa1ec;
+  border: 0;
+  border-radius: 4px;
+}
+.job-progress progress::-webkit-progress-bar {
+  background: #ffffff0a;
+  border-radius: 4px;
+}
+.job-progress progress::-webkit-progress-value {
+  background: #caa1ec;
+  border-radius: 4px;
+}
+.job-progress p {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.job-card .plex-toolbar {
+  margin-bottom: 18px;
+}
+.media-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.8fr 1fr 1.5fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.media-filters label {
+  font-size: 11px;
+  margin: 0;
+}
+.media-filters select,
+select {
+  color: var(--text);
+  background: #13151b;
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 8px;
+  font: inherit;
+  min-width: 0;
+}
+.media-filters input {
+  padding: 12px;
+}
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 20px;
+}
+.media-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 0 16px;
+  text-align: left;
+  background: #16171e;
+  overflow: hidden;
+  gap: 6px;
+  border-color: #ffffff0c;
+}
+.media-card > strong,
+.media-card > span:not(.poster),
+.media-card > small {
+  padding: 0 14px;
+}
+.media-card > strong {
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.media-card > span:not(.poster) {
+  font-size: 10px;
+  font-weight: 400;
+  color: #9a8ca8;
+  overflow-wrap: anywhere;
+}
+.media-card > small {
+  font-size: 9px;
+  font-weight: 400;
+  color: #7c7189;
+}
+.media-card .available {
+  color: #99c9b1 !important;
+}
+.media-card .missing {
+  color: #dca6b0 !important;
+}
+.poster {
+  position: relative;
+  aspect-ratio: 2/3;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse, #30263e, #14151c);
+  color: #695977;
+  width: 100%;
+  overflow: hidden;
+}
+.poster img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  align-items: center;
+  padding: 25px 0;
+  font-size: 12px;
+}
+.pagination button {
+  font-size: 12px;
+}
+.media-detail {
+  margin-bottom: 25px;
+}
+.media-detail p {
+  font-size: 13px;
+  margin-bottom: 13px;
+  overflow-wrap: anywhere;
+}
+.detail-art {
+  max-height: 260px;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+.detail-art img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+}
+.settings-panel .connection-fields {
+  margin: 25px 0;
+}
+.connection-form button:disabled {
+  cursor: default;
+}
+select:focus-visible {
+  outline: 3px solid #e9c4ff;
+  outline-offset: 4px;
+}
+@media (max-width: 1000px) {
+  .media-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .search-label {
+    grid-column: span 2;
+  }
+  .library-row .card-actions {
+    width: 100%;
+  }
+  .plex-heading > .pill {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .plex-heading h1 {
+    font-size: 33px;
+    letter-spacing: -1.5px;
+  }
+  .plex-metrics {
+    gap: 16px;
+  }
+  .plex-metrics span {
+    min-width: 40%;
+    font-size: 11px;
+  }
+  .plex-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .plex-toolbar h2 {
+    font-size: 20px;
+  }
+  .server-grid {
+    grid-template-columns: 1fr;
+  }
+  .server-card,
+  .connection-form,
+  .library-row,
+  .job-card,
+  .media-detail {
+    padding: 19px;
+  }
+  .media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .plex-tabs {
+    gap: 2px;
+  }
+  .plex-tabs button {
+    padding: 12px;
+  }
+  .connection-fields {
+    grid-template-columns: 1fr;
+  }
+  .library-main {
+    min-width: 100%;
+  }
+}
+.plex-signin {
+  padding: 25px;
+  margin-bottom: 24px;
+  border: 1px solid #cfb2ee33;
+  background:
+    radial-gradient(ellipse at 0 0, #8b65ae25, transparent 70%), #17151f;
+  border-radius: 14px;
+  display: flex;
+  gap: 25px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.plex-signin h2 {
+  font-size: 22px;
+  margin: 12px 0;
+}
+.plex-signin p {
+  font-size: 13px;
+  max-width: 560px;
+}
+.plex-signin svg {
+  color: #c9a9e6;
+}
+.plex-signin .primary svg {
+  color: inherit;
+}
+.signin-wait,
+.linked-servers {
+  width: 100%;
+  display: grid;
+  gap: 15px;
+}
+.signin-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 15px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 250px;
+}
+.signin-wait > button {
+  justify-self: start;
+}
+.linked-server {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0c0e1566;
+}
+.linked-server small {
+  color: #a293ae;
+  font-weight: 400;
+}
+.linked-server select {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linked-server button {
+  margin-top: 15px;
+}
+.linked-servers > button {
+  justify-self: start;
+}

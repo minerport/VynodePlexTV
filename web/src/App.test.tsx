@@ -18,9 +18,7 @@ it("shows first-owner setup without pretending Plex is connected", async () => {
   expect(
     await screen.findByRole("button", { name: /Create owner account/ }),
   ).toBeInTheDocument();
-  expect(
-    screen.getByText(/Plex and live programming are coming/),
-  ).toBeInTheDocument();
+  expect(screen.getByText(/Connect Plex now/)).toBeInTheDocument();
 });
 it("shows a recoverable offline state", async () => {
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));

@@ -20,6 +20,7 @@ import (
 	"unicode/utf8"
 
 	"afterglow.local/tv/internal/config"
+	"afterglow.local/tv/internal/plex"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,6 +31,7 @@ type API struct {
 	version   string
 	limiter   rateLimiter
 	dummyHash []byte
+	plex      *plex.Service
 }
 type User struct {
 	ID       string `json:"id"`
@@ -76,6 +78,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/logout", a.auth(a.logout))
 	mux.HandleFunc("GET /api/v1/settings", a.auth(a.getSettings))
 	mux.HandleFunc("PUT /api/v1/settings", a.auth(a.putSettings))
+	a.plexRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

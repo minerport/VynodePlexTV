@@ -15,7 +15,7 @@ func TestMigrationsAreIdempotentAndVerified(t *testing.T) {
 	if err = db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
-	if count != 1 {
+	if count != 2 {
 		t.Fatal(count)
 	}
 	if _, err = db.Exec("UPDATE schema_migrations SET checksum='tampered'"); err != nil {

@@ -2,7 +2,7 @@
 
 A standalone, self-hosted, TV-first home for future Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 0:** secure owner setup/login, persistent SQLite, versioned API and a cinematic TV shell. Plex connection, channel creation, guide programming and video playback are intentionally not available yet. No sample media is presented as real content.
+**Phase 1:** Plex account sign-in, encrypted server connections, library discovery, synchronized movie/TV metadata, artwork caching, durable background jobs and an administration media browser. Owner authentication and the cinematic TV shell remain intact. Virtual channels, schedules and playback are intentionally not implemented. No sample media is presented as real content.
 
 ## Docker quick start
 
@@ -72,3 +72,43 @@ Implemented API: [openapi.yaml](openapi.yaml). Public endpoints: `/api/v1/health
 Environment variables: `CONFIG_DIR` (default /config), `LISTEN_ADDR` (:8080), `APP_ORIGIN` (http://localhost:8080), `COOKIE_SECURE` (false for local HTTP), `LOG_LEVEL` (INFO), `WEB_DIR` (web/dist). Docker sets WEB_DIR=/app/web. Use `.env.example` for Compose settings. Never commit credentials or local databases.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for boundaries and phased scope. Validation evidence is recorded in `VALIDATION.md` when Phase 0 has been exercised.
+
+## Connect Plex
+
+Sign in as OWNER/ADMIN and open **Plex Setup → Servers → Sign in with Plex → Open Plex sign-in**. Complete authentication on Plex's own website, return to Afterglow, and choose a server and connection. Prefer a reachable local HTTPS connection when available. If a listed address is unreachable from the Docker container, choose another advertised connection. The application validates both server identity and library access before saving. Existing machine identities reconnect rather than duplicate.
+
+Plex account sign-in needs Internet access to Plex's account service during linking. Routine health, inventory synchronization and artwork use the configured Plex server directly; there is no hosted Afterglow service. Passwords are entered only on Plex. Linking lasts up to ten minutes, is bound to the application administrator, and keeps account/resource credentials only in expiring server memory. Only the chosen server's token is encrypted and persisted. Restarting the app cancels pending sign-in flows but does not invalidate saved server connections. You may revoke Afterglow from Plex's Authorized Devices page when needed.
+
+Some DNS resolvers reject Plex's private-address `plex.direct` records. After a DNS failure, Afterglow can connect to the IPv4 address encoded in Plex's canonical hostname, retaining the original HTTPS hostname, SNI and certificate verification. This fallback does not change router DNS or disable TLS validation. Choose the server's reachable LAN address; advertised virtual bridge interfaces may not be reachable from another machine. IPv6-only DNS failures require a working resolver or another advertised connection.
+
+**Manual fallback:** choose Add Plex server and enter an HTTP(S) URL, token, and optional name. See [Plex's token instructions](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/) if needed. Never paste tokens into chat, logs or source files. Edit/reconnect accepts a blank token to retain the encrypted credential. Default HTTPS validation is always enabled; there is no insecure TLS switch. Redirecting server URLs are rejected so credentials cannot follow a redirect to another origin.
+
+Docker's `localhost` refers to the container. Use the Plex server's LAN hostname/address or a reachable advertised connection. No port is added to a complete URL. URL credentials, query strings and fragments are rejected. This is an administrator-controlled local service: private network addresses are intentionally supported.
+
+## Select and synchronize libraries
+
+Connection setup queues **Refresh libraries**. Under Libraries, select Movie/TV sections, then use **Sync changes**, **Full refresh**, or **Sync selected**. Other section types are discovered and labeled unsupported for synchronization. Selection changes retain existing inventory. Disconnect erases the stored token, disables future work and deselects libraries, while retaining media IDs and metadata. A confirmation is required in the UI. Finish/cancel active jobs before disconnecting or editing.
+
+Movies, shows, seasons and episodes retain server/rating-key identity, hierarchy, ratings, runtimes, summaries, genres, people/roles, collections, labels, external GUIDs, media parts and streams when supplied by Plex. Local IDs persist across repeated scans and removal/reappearance. Filesystem paths remain internal and are omitted from all current API responses. The Media browser supports server/library/type/title/availability filters and show/season drill-down. It is an administrative inspection view, not a player.
+
+The default browser lists **Movies & shows**. Open a show to see its seasons, then open a season to see episodes in numeric order. Breadcrumbs return to the show or the original library view; keyboard focus follows the new list. Explicit season/episode type filters remain available for inventory inspection and episode-title searches.
+
+Incremental scans traverse the complete paginated inventory, but only request detailed metadata for new/changed items (or items without usable update timestamps). Full scans also refresh unchanged details. Background defaults: health every 5 minutes, incremental sync every 6 hours, full refresh at least daily, artwork maintenance hourly. Configure intervals and the cache budget under Sync settings. Selected libraries are eligible for automatic sync immediately. Jobs run one at a time to bound Plex load; detail requests are sequential, with metadata committed per page rather than per field.
+
+**Inventory safety:** timeout, authentication failure, cancellation, malformed/inconsistent pagination, changed library identity/revision or app interruption never reconciles missing media. Only a completed traversal with consistent totals and unique observed identities can mark unseen items unavailable. Rows are never hard-deleted. Safe page updates may survive a failed/cancelled scan. Jobs interrupted by application restart become CANCELLED and can be safely rerun. Disappearing library sections are marked not present without making their media unavailable.
+
+The Jobs tab shows durable queue/running/success/failure/cancellation status, real processed/total counts and the current item. Null totals are indeterminate. Completed job history is retained for 30 days; the API lists the latest 100. The interface polls every four seconds while visible.
+
+## Secrets, artwork and backups
+
+Plex credentials use AES-256-GCM with a random nonce and server-bound additional authenticated data. Ciphertext and key-version metadata live in SQLite; `/config/secrets/plex-key-v1` stores the separate 32-byte key. `/config/secrets/plex-client-id` stores the stable application identifier. Files are created with mode 0600 inside a 0700 directory where supported. The key is independent of owner passwords. Losing/corrupting the key fails closed rather than silently replacing it. Rotation is versioned for future implementation; there is no rotation UI yet.
+
+**Back up the complete /config directory, including secrets.** Stop the container before copying, or use a coordinated SQLite backup. A database without its matching key cannot decrypt saved tokens. Cache contents can be discarded, but preserve the database and secrets together. Existing migration 001 is unchanged; migration 002 upgrades Phase 0 in place. Do not run multiple application workers against one volume. Restore a matching old database/image backup for rollback rather than downgrading an upgraded database.
+
+Artwork is served by authenticated OWNER/ADMIN endpoints. The browser never sees a Plex token or upstream image URL. Cached image bytes and private upstream validators live under `/config/cache/artwork` and SQLite. Images are revalidated after 24 hours; an existing cached copy may be served when Plex is offline. Default disk budget is 512 MB, with oldest-accessed entries evicted after writes and by hourly maintenance. Allowed image formats are JPEG/PNG/WebP/GIF, capped at 16 MB per response; SVG/HTML and arbitrary external artwork URLs are rejected. Current Phase 1 metadata/artwork APIs are admin-only.
+
+## API regeneration and tests
+
+Run `node scripts/update-plex-openapi.mjs` from the repository root after `npm ci` in web to regenerate the Phase 1 contract additions. All writes use existing application sessions, exact-Origin validation and per-session CSRF tokens. Plex upstream authorization errors return safe 502 responses, distinct from application-session 401 responses.
+
+The browser test uses an isolated test-only Plex fixture container with a randomly generated token. It exercises the real application HTTP/sync/cache stack and a container restart; it does not prove compatibility with a real Plex server. The normal application image/Compose configuration contains no fixture service. Live Plex evidence is separately recorded in VALIDATION.md. Unit tests use HTTP fixtures for failures, cancellation and inventory safety; they never require your Plex account.

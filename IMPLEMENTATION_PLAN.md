@@ -1,5 +1,17 @@
 # Implementation plan
 
+## Phase 1 — authorized continuation
+
+Baseline: cf65b5b3e5f315f2d0f2e4aa3f84852d29c8f7b6. Clean tree, documentation, migration/auth/settings code and existing tests were inspected before implementation. Phase 0 tests passed. Two incremental gaps were identified: its Plex interface was skeletal and it had no background runner. Expand the provider and add a durable single-worker queue without rewriting existing authentication or migration 001.
+
+Implemented scope: encrypted server connections and stable client identity; Plex account PIN sign-in (explicitly requested during implementation), manual fallback and resource/server selection; connection health; library discovery/selection; normalized movie/show/season/episode inventory and relationships; full/incremental scans with safe final reconciliation; jobs, cancellation, scheduled refresh and bounded artwork cache; admin UI and media search; upgrade/security/failure/browser tests; OpenAPI and documentation.
+
+Validation gates: Phase 0 upgrade, automated backend/frontend checks, Docker browser journey, real account linking/server identity/discovery/movie+TV sync/artwork/repeat sync/outage/recovery, container restart and security/diff review. Record separate evidence and any blocked live checks in VALIDATION.md before claiming completion. Preserve the Phase 0 image/config backup through validation.
+
+Status: these gates passed on 2026-10-17. Real inventory contains 3,506 movies, 225 shows, 568 seasons and 6,373 episodes. Live DNS/sort compatibility issues and the TV browser grouping correction are documented in VALIDATION.md. The pre-upgrade backup remains available.
+
+Phase 2 remains unstarted. Its exact recommended scope is Virtual Channels and Rule Engine: channel/group CRUD, static/show/collection sources and friendly typed AND/OR/NOT filters over the synchronized local model. Keep deterministic scheduling, smart-random playback ordering, EPG generation and streaming as later work unless separately authorized.
+
 ## Phase 0 — authorized scope
 
 1. Inspect the empty standalone directory; document architecture and boundaries before implementation.

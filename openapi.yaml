@@ -1,172 +1,1206 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.1.0
-  description: Phase 0 foundation. Auth mutations require the configured Origin. Authenticated mutations additionally require X-CSRF-Token from the session response.
+  version: 0.2.0
+  description: Self-hosted Plex inventory. Plex, media and jobs routes require OWNER or ADMIN. Mutations require
+    the exact configured Origin and session X-CSRF-Token. No playback or scheduling APIs are implemented.
 servers:
   - url: /api/v1
 tags:
   - name: System
   - name: Authentication
   - name: Settings
+  - name: Plex
+  - name: Media
+  - name: Jobs
 paths:
   /health:
     get:
-      tags: [System]
+      tags:
+        - System
       summary: Process liveness
       responses:
-        '200':
+        "200":
           description: Live
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Status' }
+              schema:
+                $ref: "#/components/schemas/Status"
   /ready:
     get:
-      tags: [System]
+      tags:
+        - System
       summary: Database readiness
       responses:
-        '200':
+        "200":
           description: Ready
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Status' }
-        '503': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Status"
+        "503":
+          $ref: "#/components/responses/Error"
   /version:
     get:
-      tags: [System]
+      tags:
+        - System
       summary: Running build version
       responses:
-        '200':
+        "200":
           description: Version
           content:
             application/json:
               schema:
                 type: object
-                required: [version]
+                required:
+                  - version
                 properties:
-                  version: { type: string }
+                  version:
+                    type: string
   /auth/status:
     get:
-      tags: [Authentication]
+      tags:
+        - Authentication
       summary: Check whether the first owner must be created
       responses:
-        '200':
+        "200":
           description: Setup state
           content:
             application/json:
               schema:
                 type: object
-                required: [setupRequired]
+                required:
+                  - setupRequired
                 properties:
-                  setupRequired: { type: boolean }
-        '500': { $ref: '#/components/responses/Error' }
+                  setupRequired:
+                    type: boolean
+        "500":
+          $ref: "#/components/responses/Error"
   /auth/setup:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       summary: Atomically create the first owner; does not sign in
       parameters:
-        - { $ref: '#/components/parameters/Origin' }
-      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        $ref: "#/components/requestBodies/Credentials"
       responses:
-        '201':
+        "201":
           description: Owner created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Status' }
-        '400': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
-        '409': { $ref: '#/components/responses/Error' }
-        '415': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Status"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "415":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /auth/login:
     post:
-      tags: [Authentication]
+      tags:
+        - Authentication
       summary: Sign in and issue a 24-hour HttpOnly SameSite Strict session cookie
       parameters:
-        - { $ref: '#/components/parameters/Origin' }
-      requestBody: { $ref: '#/components/requestBodies/Credentials' }
+        - $ref: "#/components/parameters/Origin"
+      requestBody:
+        $ref: "#/components/requestBodies/Credentials"
       responses:
-        '200':
+        "200":
           description: Authenticated
           headers:
             Set-Cookie:
-              schema: { type: string }
+              schema:
+                type: string
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Session' }
-        '400': { $ref: '#/components/responses/Error' }
-        '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
-        '415': { $ref: '#/components/responses/Error' }
-        '429': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "415":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /auth/session:
     get:
-      tags: [Authentication]
-      security: [{ sessionCookie: [] }]
+      tags:
+        - Authentication
+      security:
+        - sessionCookie: []
       summary: Read the authenticated user and session CSRF token
       responses:
-        '200':
+        "200":
           description: Session
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Session' }
-        '401': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /auth/logout:
     post:
-      tags: [Authentication]
-      security: [{ sessionCookie: [] }]
+      tags:
+        - Authentication
+      security:
+        - sessionCookie: []
       summary: Revoke this session and clear its cookie
       parameters:
-        - { $ref: '#/components/parameters/Origin' }
-        - { $ref: '#/components/parameters/CSRF' }
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
       responses:
-        '200':
+        "200":
           description: Signed out
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Status' }
-        '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Status"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /settings:
     get:
-      tags: [Settings]
-      security: [{ sessionCookie: [] }]
+      tags:
+        - Settings
+      security:
+        - sessionCookie: []
       summary: Read application settings
       responses:
-        '200':
+        "200":
           description: Settings
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Settings' }
-        '401': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
     put:
-      tags: [Settings]
-      security: [{ sessionCookie: [] }]
+      tags:
+        - Settings
+      security:
+        - sessionCookie: []
       summary: Update settings (OWNER or ADMIN)
       parameters:
-        - { $ref: '#/components/parameters/Origin' }
-        - { $ref: '#/components/parameters/CSRF' }
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/Settings' }
+            schema:
+              $ref: "#/components/schemas/Settings"
       responses:
-        '200':
+        "200":
           description: Saved
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Settings' }
-        '400': { $ref: '#/components/responses/Error' }
-        '401': { $ref: '#/components/responses/Error' }
-        '403': { $ref: '#/components/responses/Error' }
-        '415': { $ref: '#/components/responses/Error' }
-        '500': { $ref: '#/components/responses/Error' }
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "415":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+  /plex/servers:
+    get:
+      tags:
+        - Plex
+      summary: List configured servers, including disconnected inventory sources
+      operationId: get_plex_servers
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlexServer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+    post:
+      tags:
+        - Plex
+      summary: Validate and save encrypted server credentials
+      operationId: post_plex_servers
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexServer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlexConnection"
+  /plex/connections/test:
+    post:
+      tags:
+        - Plex
+      summary: Validate connection and library access without saving credentials
+      operationId: post_plex_connections_test
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexIdentity"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlexConnection"
+  /plex/servers/{id}:
+    get:
+      tags:
+        - Plex
+      summary: Read server status (no secrets)
+      operationId: get_plex_servers__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexServer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+    patch:
+      tags:
+        - Plex
+      summary: Update or reconnect the same machine identity; active jobs must finish first
+      operationId: patch_plex_servers__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexServer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlexConnection"
+    delete:
+      tags:
+        - Plex
+      summary: Disconnect, erase token, deselect libraries; retain all local inventory
+      operationId: delete_plex_servers__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/servers/{id}/test:
+    post:
+      tags:
+        - Plex
+      summary: Queue an active health check
+      operationId: post_plex_servers__id__test
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexJob"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/servers/{id}/discover:
+    post:
+      tags:
+        - Plex
+      summary: Queue complete library discovery
+      operationId: post_plex_servers__id__discover
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexJob"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/servers/{id}/libraries:
+    get:
+      tags:
+        - Plex
+      summary: List discovered libraries and available item counts
+      operationId: get_plex_servers__id__libraries
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlexLibrary"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/libraries/{id}:
+    patch:
+      tags:
+        - Plex
+      summary: Select/deselect a library; never delete its inventory
+      operationId: patch_plex_libraries__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - selected
+              properties:
+                selected:
+                  type: boolean
+  /plex/libraries/{id}/sync:
+    post:
+      tags:
+        - Plex
+      summary: Queue a full or incremental scan of selected library
+      operationId: post_plex_libraries__id__sync
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexJob"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                mode:
+                  type: string
+                  enum:
+                    - full
+                    - incremental
+                  default: incremental
+  /plex/settings:
+    get:
+      tags:
+        - Plex
+      summary: Read background intervals and artwork budget
+      operationId: get_plex_settings
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexOptions"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+    put:
+      tags:
+        - Plex
+      summary: Update background intervals and artwork budget
+      operationId: put_plex_settings
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexOptions"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlexOptions"
+  /jobs:
+    get:
+      tags:
+        - Jobs
+      summary: List the 100 most recent jobs (30-day retained history)
+      operationId: get_jobs
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlexJob"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /jobs/{id}:
+    get:
+      tags:
+        - Jobs
+      summary: Read persisted progress and outcome
+      operationId: get_jobs__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexJob"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /jobs/{id}/cancel:
+    post:
+      tags:
+        - Jobs
+      summary: Cancel queued or running work without missing-item reconciliation
+      operationId: post_jobs__id__cancel
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /media:
+    get:
+      tags:
+        - Media
+      summary: Search admin inventory, including show-title matches for episodes
+      operationId: get_media
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: server
+          schema:
+            type: string
+        - in: query
+          name: library
+          schema:
+            type: string
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: available
+          schema:
+            type: string
+        - in: query
+          name: parent
+          schema:
+            type: string
+          description: Parent Plex rating key; pair with server filter.
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 40
+        - in: query
+          name: topLevel
+          schema:
+            type: boolean
+            default: false
+          description: Return only movies and shows. Child listings use parent plus server and are ordered by
+            season/episode index.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /media/{id}:
+    get:
+      tags:
+        - Media
+      summary: Read metadata, relations, versions and streams; filesystem paths omitted
+      operationId: get_media__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /media/{id}/artwork/{kind}:
+    get:
+      tags:
+        - Media
+      summary: Authenticated artwork proxy with bounded cache and private ETags
+      operationId: get_media__id__artwork__kind_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: kind
+          required: true
+          schema:
+            type: string
+            enum:
+              - poster
+              - background
+      responses:
+        "200":
+          description: Image; Plex tokens and upstream URLs are never returned
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+        "304":
+          description: Browser image is current (authentication still required)
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/link:
+    post:
+      tags:
+        - Plex
+      summary: Begin expiring Plex account authorization for this administrator
+      operationId: post_plex_link
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexLinkStart"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/link/{id}/poll:
+    post:
+      tags:
+        - Plex
+      summary: Check authorization and list account servers without tokens
+      operationId: post_plex_link__id__poll
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexLinkStatus"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/link/{id}:
+    delete:
+      tags:
+        - Plex
+      summary: Discard this administrator's temporary linking secrets
+      operationId: delete_plex_link__id_
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+  /plex/link/{id}/connect:
+    post:
+      tags:
+        - Plex
+      summary: Validate a listed connection and save its encrypted server credential
+      operationId: post_plex_link__id__connect
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlexServer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
+        "502":
+          $ref: "#/components/responses/Error"
+          description: Safe Plex connection/protocol error, including unauthorized Plex credential (distinct from
+            application session expiration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - serverId
+                - uri
+              properties:
+                serverId:
+                  type: string
+                uri:
+                  type: string
 components:
   securitySchemes:
     sessionCookie:
@@ -178,13 +1212,15 @@ components:
       in: header
       name: Origin
       required: true
-      schema: { type: string }
+      schema:
+        type: string
       description: Must exactly match APP_ORIGIN.
     CSRF:
       in: header
       name: X-CSRF-Token
       required: true
-      schema: { type: string }
+      schema:
+        type: string
   requestBodies:
     Credentials:
       required: true
@@ -193,10 +1229,19 @@ components:
           schema:
             type: object
             additionalProperties: false
-            required: [username, password]
+            required:
+              - username
+              - password
             properties:
-              username: { type: string, minLength: 3, maxLength: 40, pattern: '^[A-Za-z0-9._-]+$' }
-              password: { type: string, format: password, description: 'Setup requires 12–72 UTF-8 bytes.' }
+              username:
+                type: string
+                minLength: 3
+                maxLength: 40
+                pattern: ^[A-Za-z0-9._-]+$
+              password:
+                type: string
+                format: password
+                description: Setup requires 12–72 UTF-8 bytes.
   responses:
     Error:
       description: Request failed; error contains a safe user-facing message
@@ -204,32 +1249,501 @@ components:
         application/json:
           schema:
             type: object
-            required: [error]
+            required:
+              - error
             properties:
-              error: { type: string }
+              error:
+                type: string
   schemas:
     Status:
       type: object
-      required: [status]
+      required:
+        - status
       properties:
-        status: { type: string }
+        status:
+          type: string
     Session:
       type: object
-      required: [user, csrfToken, expiresAt]
+      required:
+        - user
+        - csrfToken
+        - expiresAt
       properties:
         user:
           type: object
-          required: [id, username, role]
+          required:
+            - id
+            - username
+            - role
           properties:
-            id: { type: string }
-            username: { type: string }
-            role: { type: string, enum: [OWNER, ADMIN, USER] }
-        csrfToken: { type: string }
-        expiresAt: { type: integer, format: int64, description: UTC Unix seconds }
+            id:
+              type: string
+            username:
+              type: string
+            role:
+              type: string
+              enum:
+                - OWNER
+                - ADMIN
+                - USER
+        csrfToken:
+          type: string
+        expiresAt:
+          type: integer
+          format: int64
+          description: UTC Unix seconds
     Settings:
       type: object
       additionalProperties: false
-      required: [displayName, timezone]
+      required:
+        - displayName
+        - timezone
       properties:
-        displayName: { type: string, minLength: 1, maxLength: 60 }
-        timezone: { type: string, example: America/New_York, description: Explicit IANA timezone; Local is not accepted }
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 60
+        timezone:
+          type: string
+          example: America/New_York
+          description: Explicit IANA timezone; Local is not accepted
+    PlexIdentity:
+      type: object
+      properties:
+        machineIdentifier:
+          type: string
+        friendlyName:
+          type: string
+        product:
+          type: string
+        version:
+          type: string
+        platform:
+          type: string
+        platformVersion:
+          type: string
+        owned:
+          type: boolean
+          nullable: true
+        secureConnections:
+          type: boolean
+          nullable: true
+    PlexServer:
+      allOf:
+        - $ref: "#/components/schemas/PlexIdentity"
+        - type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            baseUrl:
+              type: string
+            status:
+              type: string
+              enum:
+                - CONNECTED
+                - DEGRADED
+                - OFFLINE
+                - UNAUTHORIZED
+            disabled:
+              type: boolean
+            lastHealthCheckAt:
+              type: integer
+              format: int64
+              nullable: true
+            lastSuccessAt:
+              type: integer
+              format: int64
+              nullable: true
+            lastError:
+              type: string
+            createdAt:
+              type: integer
+              format: int64
+              nullable: true
+            updatedAt:
+              type: integer
+              format: int64
+              nullable: true
+    PlexConnection:
+      type: object
+      additionalProperties: false
+      required:
+        - baseUrl
+      properties:
+        baseUrl:
+          type: string
+          description: HTTP(S) URL; no userinfo, query, fragment, or relative path segments. Explicit ports are preserved.
+        token:
+          type: string
+          format: password
+          writeOnly: true
+          description: Required on create/test; blank on edit retains stored credential. Never returned.
+        name:
+          type: string
+          maxLength: 100
+    PlexLibrary:
+      type: object
+      properties:
+        id:
+          type: string
+        serverId:
+          type: string
+        key:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        agent:
+          type: string
+        scanner:
+          type: string
+        language:
+          type: string
+        uuid:
+          type: string
+        revision:
+          type: string
+        selected:
+          type: boolean
+        present:
+          type: boolean
+        supported:
+          type: boolean
+        lastSyncedAt:
+          type: integer
+          format: int64
+          nullable: true
+        lastFullSyncAt:
+          type: integer
+          format: int64
+          nullable: true
+        itemCount:
+          type: integer
+    PlexJob:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - PLEX_DISCOVERY
+            - PLEX_HEALTH_CHECK
+            - PLEX_LIBRARY_SYNC
+            - PLEX_ARTWORK_MAINTENANCE
+        serverId:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          nullable: true
+        mode:
+          type: string
+          enum:
+            - full
+            - incremental
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - CANCELLED
+        createdAt:
+          type: integer
+          format: int64
+          nullable: true
+        startedAt:
+          type: integer
+          format: int64
+          nullable: true
+        completedAt:
+          type: integer
+          format: int64
+          nullable: true
+        processed:
+          type: integer
+        total:
+          type: integer
+          nullable: true
+          description: Null means indeterminate; never invent progress.
+        currentItem:
+          type: string
+        error:
+          type: string
+        cancelRequested:
+          type: boolean
+    MediaTag:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - genre
+            - person
+            - collection
+            - label
+        sourceKey:
+          type: string
+        name:
+          type: string
+        relationship:
+          type: string
+        character:
+          type: string
+    ExternalID:
+      type: object
+      properties:
+        provider:
+          type: string
+        value:
+          type: string
+    MediaStream:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: integer
+          nullable: true
+        codec:
+          type: string
+        language:
+          type: string
+        languageCode:
+          type: string
+        title:
+          type: string
+        default:
+          type: boolean
+          nullable: true
+        forced:
+          type: boolean
+          nullable: true
+        hearingImpaired:
+          type: boolean
+          nullable: true
+        channels:
+          type: integer
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        profile:
+          type: string
+    MediaVersion:
+      type: object
+      properties:
+        mediaId:
+          type: string
+        partId:
+          type: string
+        container:
+          type: string
+        videoCodec:
+          type: string
+        audioCodec:
+          type: string
+        resolution:
+          type: string
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        bitrate:
+          type: integer
+          nullable: true
+        durationMs:
+          type: integer
+          format: int64
+          nullable: true
+        size:
+          type: integer
+          format: int64
+          nullable: true
+        optimized:
+          type: boolean
+          nullable: true
+        streams:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaStream"
+    MediaItem:
+      type: object
+      properties:
+        id:
+          type: string
+        serverId:
+          type: string
+        libraryId:
+          type: string
+        libraryTitle:
+          type: string
+        ratingKey:
+          type: string
+        parentRatingKey:
+          type: string
+        grandparentRatingKey:
+          type: string
+        type:
+          type: string
+          enum:
+            - movie
+            - show
+            - season
+            - episode
+        title:
+          type: string
+        sortTitle:
+          type: string
+        originalTitle:
+          type: string
+        summary:
+          type: string
+        year:
+          type: integer
+          nullable: true
+        contentRating:
+          type: string
+        rating:
+          type: number
+          nullable: true
+        audienceRating:
+          type: number
+          nullable: true
+        durationMs:
+          type: integer
+          format: int64
+          nullable: true
+        addedAt:
+          type: integer
+          format: int64
+          nullable: true
+        sourceUpdatedAt:
+          type: integer
+          format: int64
+          nullable: true
+        originallyAvailableAt:
+          type: string
+        studio:
+          type: string
+        tagline:
+          type: string
+        index:
+          type: integer
+          nullable: true
+        parentIndex:
+          type: integer
+          nullable: true
+        guid:
+          type: string
+        available:
+          type: boolean
+        updatedAt:
+          type: integer
+          format: int64
+          nullable: true
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaTag"
+        externalIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExternalID"
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaVersion"
+    MediaResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaItem"
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+    PlexOptions:
+      type: object
+      properties:
+        healthIntervalSeconds:
+          type: integer
+          minimum: 30
+          maximum: 86400
+        syncIntervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 604800
+        fullSyncIntervalSeconds:
+          type: integer
+          minimum: 300
+          maximum: 2592000
+          description: Must be at least syncIntervalSeconds.
+        artworkCacheMb:
+          type: integer
+          minimum: 16
+          maximum: 10240
+      additionalProperties: false
+      required:
+        - healthIntervalSeconds
+        - syncIntervalSeconds
+        - fullSyncIntervalSeconds
+        - artworkCacheMb
+    PlexLinkStart:
+      type: object
+      properties:
+        id:
+          type: string
+        authUrl:
+          type: string
+          description: Official Plex authorization URL with an expiring PIN, never an account token.
+        expiresAt:
+          type: integer
+          format: int64
+          nullable: true
+    PlexLinkStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - WAITING
+            - AUTHORIZED
+        servers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              owned:
+                type: boolean
+              connections:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    uri:
+                      type: string
+                    local:
+                      type: boolean
+                    relay:
+                      type: boolean
+                    protocol:
+                      type: string

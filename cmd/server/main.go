@@ -12,6 +12,7 @@ import (
 	"afterglow.local/tv/internal/config"
 	"afterglow.local/tv/internal/database"
 	"afterglow.local/tv/internal/httpapi"
+	"afterglow.local/tv/internal/plex"
 	_ "time/tzdata"
 )
 
@@ -37,9 +38,23 @@ func main() {
 	}
 	defer db.Close()
 	api := httpapi.New(db, cfg, logger, version)
+	plexService, err := plex.NewService(db, cfg.Dir, version, logger)
+	if err != nil {
+		logger.Error("Plex service initialization failed; verify config backup and encryption key")
+		os.Exit(1)
+	}
+	api.MountPlex(plexService)
 	srv := &http.Server{Addr: cfg.Address, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		if err := plexService.Run(ctx); err != nil {
+			logger.Error("Plex worker stopped unexpectedly")
+			stop()
+		}
+	}()
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -53,4 +68,6 @@ func main() {
 		logger.Error("server failed", "error", err)
 		os.Exit(1)
 	}
+	stop()
+	<-workerDone
 }

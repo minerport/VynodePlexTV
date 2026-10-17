@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { bootstrap, request, type Session, type Settings } from "./api";
 import { useTVFocus } from "./focus";
+import { PlexPage } from "./PlexPage";
 
 type Page = "live" | "guide" | "channels" | "plex" | "settings";
 const pages: { id: Page; name: string; icon: typeof Tv }[] = [
@@ -151,9 +152,11 @@ export function App() {
           />
         )}
         <div className="foundation-note">
-          PHASE 0 · THE FOUNDATION
+          YOUR SELF-HOSTED TELEVISION
           <br />
-          <span>Plex and live programming are coming in later phases.</span>
+          <span>
+            Connect Plex now. Live programming arrives in later phases.
+          </span>
         </div>
       </div>
     </div>
@@ -351,6 +354,8 @@ function Shell({
             onSave={setSettings}
             session={session}
           />
+        ) : page === "plex" ? (
+          <PlexPage session={session} />
         ) : (
           <EmptyPage page={page} navigate={navigate} />
         )}
@@ -359,7 +364,7 @@ function Shell({
         <span>
           <span className="status-dot" />{" "}
           {settings?.displayName ?? "Afterglow TV"}{" "}
-          <span className="footer-divider">/</span> Foundation preview
+          <span className="footer-divider">/</span> Library foundation
         </span>
         <span className="key-hints">
           <kbd>↑</kbd>
