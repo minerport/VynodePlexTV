@@ -2,11 +2,11 @@
 
 A standalone, self-hosted, TV-first home for Plex-powered linear channels. Independent of VyNode Media.
 
-**0.9.1 beta — Docker/web and standalone Android TV:** Personal ordering, hidden channels, private viewing history, explainable discovery and explicit shared smart-channel templates extend the television experience. Personal discovery never rewrites shared broadcasts. See VALIDATION.md for validation status.
+**0.9.2 beta — Docker/web and standalone Android TV:** Personal ordering, hidden channels, private viewing history, explainable discovery and explicit shared smart-channel templates extend the television experience. Personal discovery never rewrites shared broadcasts. See VALIDATION.md for validation status.
 
 ## Install
 
-- [Signed Android TV APK and checksums](https://github.com/minerport/VynodePlexTV/releases/tag/v0.9.1). ARM64; runs independently of Docker.
+- [Signed Android TV APK and checksums](https://github.com/minerport/VynodePlexTV/releases/tag/v0.9.2). ARM64; runs independently of Docker.
 - [Unraid installation and Community Applications template](UNRAID.md). Catalog submission/review is separate.
 - Docker image: `ghcr.io/minerport/vynodeplextv:latest`. Use `docker compose -f compose.release.yaml up -d` after configuring `.env` from `.env.example`.
 - [Release notes and limitations](docs/RELEASE_NOTES.md). Licensed under [GPL-3.0](LICENSE).
