@@ -9,3 +9,5 @@ Ensure the GHCR package is publicly readable and verify an anonymous image pull.
 CA submission uses the public repository URL at ca.unraid.net/submit; run its hosted Validate and Scan. Local XML checks do not substitute for review or acceptance. Do not advertise catalog inclusion before acceptance.
 
 Validated main-branch pushes automatically publish `ghcr.io/minerport/vynodeplextv:latest`. Unraid and Compose installation defaults track latest. Versioned release tags remain available for recovery, not the default installation path. Unraid update scheduling is controlled by the operator.
+
+Confirmed fixes must be published, not merely committed or installed on a development device. Docker fixes publish through validated main builds to latest. APK changes require a version-code increment, signed release APK/checksums, and a tagged GitHub release. Verify artifact availability before reporting publication; identify any device-only build explicitly.

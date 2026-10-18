@@ -102,8 +102,8 @@ func run(input io.Reader, output io.Writer) error {
 	defer listener.Close()
 	origin := "http://" + listener.Addr().String()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	api := httpapi.New(db, config.Config{Dir: boot.Dir, Origin: origin, WebDir: boot.Dir + "/no-web-ui"}, log, "0.9.1-android")
-	media, e := plex.NewServiceWithVault(db, boot.Dir, "0.9.1", log, vault)
+	api := httpapi.New(db, config.Config{Dir: boot.Dir, Origin: origin, WebDir: boot.Dir + "/no-web-ui"}, log, "0.9.2-android")
+	media, e := plex.NewServiceWithVault(db, boot.Dir, "0.9.2", log, vault)
 	if e != nil {
 		return e
 	}
