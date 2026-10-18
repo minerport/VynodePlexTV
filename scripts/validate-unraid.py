@@ -19,3 +19,8 @@ assert 'PUID' not in config and 'PGID' not in config
 assert ET.parse(root / 'ca_profile.xml').getroot().findtext('Profile')
 assert (root / 'LICENSE').is_file()
 print('Unraid template/profile structural checks passed')
+
+# Keep manual installs consistent with template installs.
+dockerfile = (root / 'Dockerfile').read_text()
+assert f'net.unraid.docker.icon="{app.findtext("Icon")}"' in dockerfile
+assert f'net.unraid.docker.webui="{app.findtext("WebUI")}"' in dockerfile

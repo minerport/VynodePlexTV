@@ -31,3 +31,9 @@ This repository follows the official [CA starter](https://github.com/unraid/unra
 Maintainer: open [CA submission](https://ca.unraid.net/submit), submit `https://github.com/minerport/VynodePlexTV`, then run **Validate** and **Scan**. Resolve any scanner feedback and complete review. Automated local XML checks and an Unraid-style UID/path smoke test are not a physical Unraid validation or CA approval.
 
 The Android APK is distributed through GitHub Releases, not the Docker Apps catalog. It runs independently on ARM64 Android TV devices; no Docker server is required.
+
+The template supplies the icon and WebUI automatically. Docker images also include
+`net.unraid.docker.icon` and `net.unraid.docker.webui` labels for manual/Compose
+installations. Existing containers need an image update and recreation to inherit
+new image labels; restarting alone does not change container metadata. An explicit
+container label overrides the image default. Unraid may cache an existing icon.
