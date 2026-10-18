@@ -183,9 +183,7 @@ export function PlexSignIn({
                       setChoices({ ...choices, [resource.id]: e.target.value })
                     }
                   >
-                    <option value="">
-                      Automatic secure connection (recommended)
-                    </option>
+                    <option value="">Automatic connection (recommended)</option>
                     {resource.connections.map((c) => (
                       <option key={c.uri} value={c.uri}>
                         {c.local ? "Local" : "Remote"}

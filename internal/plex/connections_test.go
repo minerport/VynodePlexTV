@@ -62,3 +62,17 @@ func TestAutomaticLinkKeepsIdentityAndUserBoundary(t *testing.T) {
 		t.Fatal("completed flow retained")
 	}
 }
+
+func TestAutomaticLocalHTTPFallback(t *testing.T) {
+	s, f := newTestService(t)
+	resource := accountResource{ClientIdentifier: "fixture-server", AccessToken: f.token, Connections: []LinkConnection{{URI: "https://127.0.0.1:1"}, {URI: f.server.URL, Local: true}}}
+	uri, err := s.findSecureConnection(context.Background(), resource)
+	if err != nil || uri != f.server.URL {
+		t.Fatalf("local fallback: %v", err)
+	}
+	for _, c := range []LinkConnection{{URI: "http://8.8.8.8:32400", Local: true}, {URI: "http://plex.example.com", Local: true}, {URI: f.server.URL}, {URI: f.server.URL, Local: true, Relay: true}} {
+		if localHTTP(c) {
+			t.Fatal("unsafe automatic HTTP candidate accepted")
+		}
+	}
+}

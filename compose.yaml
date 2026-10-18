@@ -6,7 +6,7 @@ services:
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
     environment:
-      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+      APP_ORIGIN: ${APP_ORIGIN:-auto}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PRESENTATION_UPLOAD_MB: ${PRESENTATION_UPLOAD_MB:-256}

@@ -108,7 +108,7 @@ func (a *API) Handler() http.Handler {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Cache-Control", "no-store")
 		}
-		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" && r.Header.Get("Origin") != a.cfg.Origin {
+		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" && !allowedOrigin(r, a.cfg.Origin) {
 			problem(w, 403, "Request origin is not allowed")
 			return
 		}

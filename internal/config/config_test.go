@@ -19,3 +19,12 @@ func TestOriginConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAutoOriginDefault(t *testing.T) {
+	t.Setenv("APP_ORIGIN", "")
+	t.Setenv("COOKIE_SECURE", "false")
+	c, err := Load()
+	if err != nil || c.Origin != "auto" {
+		t.Fatalf("auto default: %v", err)
+	}
+}

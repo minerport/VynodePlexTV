@@ -776,3 +776,11 @@ Local validation: complete Go tests/vet/format checks passed in the backend-test
 - Anonymous pull of `ghcr.io/minerport/vynodeplextv:0.9.1` succeeded; digest `sha256:ca3e37744a05291532eb956096873c5d9b85534aa9321c1c91294e3f363bf9ed`.
 - Browser owner setup/navigation/logout/restart-persistence regression passed (one complete end-to-end journey). Isolated UID/GID 99:100 bind-mounted config smoke test passed setup/login and login after restart. These are Docker tests, not physical Unraid certification.
 - Community Applications hosted validation and submission are left to the operator at their request. Repository readiness does not mean catalog acceptance.
+
+### Automatic LAN setup and Plex protocol selection
+
+APP_ORIGIN now defaults to auto: write requests must carry an HTTP(S) Origin matching the actual request scheme and Host (including mapped port). Missing/null/cross-origin requests remain rejected; forwarded headers are not trusted. Explicit origin configuration and session CSRF checks remain supported. Reverse-proxy HTTPS termination can use an explicit public origin. Existing fixed-origin container settings must be changed to auto once.
+
+Plex account discovery tries verified HTTPS first (14-second budget), then only Plex-advertised local private/loopback literal HTTP endpoints. Credentials never follow redirects; no public/DNS/relay HTTP automatic fallback and no fallback after unauthorized access. Manual HTTP/HTTPS selection remains available. Identity and library-access verification still apply before saving.
+
+Validation: backend regression suite, vet and gofmt checks; automatic-origin custom-port owner setup/login and cross-origin rejection; local HTTP fallback and unsafe-candidate rejection; 67 web tests, lint and production build. Live Unraid/Plex validation of this change remains pending. Shared engine source is updated; the previously published APK is not rebuilt by the Docker packaging workflow.

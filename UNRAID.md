@@ -10,9 +10,9 @@ Until listed, download the raw XML into `/boot/config/plugins/dockerMan/template
 
 1. Map `/config` to `/mnt/user/appdata/afterglow-tv` (prefer a cache/appdata pool).
 2. Choose the host port, default 8080.
-3. **Set Browser Origin** to exactly the URL used in your browser, including scheme and port, without a trailing slash. The default `http://tower:8080` only works when you actually browse that hostname. Using an IP instead requires changing this setting to that IP. An origin mismatch prevents authenticated writes by design.
+3. Leave **Browser Origin** as `auto` for normal LAN access, including custom mapped ports. Existing installations with a fixed APP_ORIGIN must change it to `auto` once to enable this behavior. Explicit origins remain supported for reverse proxies.
 4. The template runs as **99:100**, Unraid's usual nobody/users IDs. The appdata directory must be writable by these IDs. It needs no privileged mode, host networking, GPU or Plex filesystem mounts. Do not add unsupported PUID/PGID variables.
-5. Start, create the owner account on your trusted LAN, sign in with Plex, select libraries and synchronize. Choose automatic secure connection discovery first.
+5. Start, create the owner account on your trusted LAN, sign in with Plex, select libraries and synchronize. Choose automatic connection discovery first.
 
 The image defaults to 10001:10001 outside this Unraid template. If importing an existing installation, stop it first and ensure the target user can read/write its complete appdata tree. Never reset or delete existing appdata to fix permissions.
 

@@ -64,7 +64,7 @@ docker compose up --build -d
 
 Open http://localhost:8080 and create the owner account. Passwords require 12–72 UTF-8 bytes. Keep the service on loopback until setup is complete. Data is stored in the Compose volume `afterglow_config` (Docker name `afterglow_afterglow_config`) at /config and survives restart/rebuild. `docker compose down` preserves data; `down -v` deletes it.
 
-For LAN access set `BIND_ADDRESS=0.0.0.0` and `APP_ORIGIN=http://YOUR-HOST:8080` in `.env`, recreate the service, and open that exact origin. APP_ORIGIN must match the browser's scheme, hostname and port. Use a TLS reverse proxy and `COOKIE_SECURE=true` outside a trusted LAN. Do not expose first-run setup to an untrusted network.
+For LAN access set `BIND_ADDRESS=0.0.0.0` and leave `APP_ORIGIN=auto` in `.env`, recreate the service, and open that exact origin. Automatic mode validates same-origin requests against the actual request host and port. An explicit APP_ORIGIN remains available for reverse proxies. Use a TLS reverse proxy and `COOKIE_SECURE=true` outside a trusted LAN. Do not expose first-run setup to an untrusted network.
 
 ```powershell
 docker compose logs -f
@@ -112,13 +112,13 @@ Tab / Shift+Tab and arrow keys move focus across the TV shell. Enter activates; 
 
 ## Unraid
 
-Use the published image and template described in [UNRAID.md](UNRAID.md). For source development, build with `docker build -t afterglow-tv:local .`. Add a container using that image, bridge networking, container port 8080, and a writable host path such as `/mnt/user/appdata/afterglow-tv` mapped to `/config`. The image runs as UID/GID 10001: grant that account write access to the directory. Set APP_ORIGIN to the browser-facing URL. No privileged access, GPU or host networking is required. Complete setup on a trusted network. Stop the container before backing up the whole config directory; retain a matching image/version for restore.
+Use the published image and template described in [UNRAID.md](UNRAID.md). For source development, build with `docker build -t afterglow-tv:local .`. Add a container using that image, bridge networking, container port 8080, and a writable host path such as `/mnt/user/appdata/afterglow-tv` mapped to `/config`. The image runs as UID/GID 10001: grant that account write access to the directory. Leave APP_ORIGIN=auto for direct LAN access. No privileged access, GPU or host networking is required. Complete setup on a trusted network. Stop the container before backing up the whole config directory; retain a matching image/version for restore.
 
 ## API and configuration
 
 Implemented API: [openapi.yaml](openapi.yaml). Public endpoints: `/api/v1/health`, `/api/v1/ready`, `/api/v1/version`, `/api/v1/auth/status`. Authenticated session data includes a CSRF token; send it in `X-CSRF-Token` with the configured Origin for mutations. Settings writes require OWNER/ADMIN.
 
-Environment variables: `CONFIG_DIR` (default /config), `LISTEN_ADDR` (:8080), `APP_ORIGIN` (http://localhost:8080), `COOKIE_SECURE` (false for local HTTP), `LOG_LEVEL` (INFO), `WEB_DIR` (web/dist). Docker sets WEB_DIR=/app/web. Use `.env.example` for Compose settings. Never commit credentials or local databases.
+Environment variables: `CONFIG_DIR` (default /config), `LISTEN_ADDR` (:8080), `APP_ORIGIN` (auto), `COOKIE_SECURE` (false for local HTTP), `LOG_LEVEL` (INFO), `WEB_DIR` (web/dist). Docker sets WEB_DIR=/app/web. Use `.env.example` for Compose settings. Never commit credentials or local databases.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for boundaries and phased scope. Validation evidence is recorded in `VALIDATION.md` when Phase 0 has been exercised.
 
@@ -259,6 +259,6 @@ Guide categories respect explicit channel groups. Ungrouped channels with exclus
 
 ### Plex sign-in connection discovery
 
-Choose **Sign in with Plex**, authorize on Plex, then choose a server. The default **Automatic secure connection** probes only HTTPS addresses advertised by that account, with at most four concurrent probes, six seconds per probe and a 22-second discovery budget. A remote route is tried early so stale LAN/container interfaces cannot consume the entire budget. The first verified reachable endpoint wins; both machine identity and library access must match. The whole connect operation is bounded to 27 seconds. No plaintext fallback is automatic.
+Choose **Sign in with Plex**, authorize on Plex, then choose a server. The default **Automatic connection** first probes HTTPS addresses advertised by that account, with at most four concurrent probes, six seconds per probe and a 14-second HTTPS discovery budget. A remote route is tried early so stale LAN/container interfaces cannot consume the entire budget. The first verified reachable endpoint wins; both machine identity and library access must match. The whole connect operation is bounded to 27 seconds. If HTTPS fails, account-advertised local literal private/loopback HTTP addresses are eligible for fallback. Public HTTP addresses, DNS names, relay HTTP, redirects and authentication failures do not trigger automatic downgrade. Manual HTTP/HTTPS selection remains available.
 
 An explicit connection remains available for troubleshooting; HTTP is labeled unencrypted and should only be used on a trusted network. The strict `plex.direct` DNS fallback supports encoded IPv4 and IPv6 addresses while retaining the original hostname for TLS certificate verification. It never disables certificate checks. This cannot bypass a firewall, VPN routing policy, unavailable Plex server or disabled remote access. Automatic discovery runs from the Docker server or the standalone Android device, not the browser that approved sign-in. If the saved address later changes, sign in again to reconnect the existing server identity without replacing inventory. Linking remains short-lived; account authorization does not imply that every advertised server address is reachable.
