@@ -1,3 +1,4 @@
+import { AudioControls } from "./AudioControls";
 import { BroadcastOverlay } from "../presentation/BroadcastOverlay";
 import { MiniGuide } from "../guide/MiniGuide";
 import { GuideGrid } from "../guide/GuideGrid";
@@ -297,6 +298,7 @@ export function Player({
             {t?.origin === "CATCH_UP" ? "ON LIVE CHANNEL NEXT" : "NEXT"} ·{" "}
             {t?.next?.title ?? selected?.next?.title ?? "Schedule unavailable"}
           </p>
+          <AudioControls getVideo={() => video.current} />
           <div ref={controls} className="player-controls">
             <button onClick={() => switchChannel(-1)}>Channel −</button>
             <button onClick={() => controller.current?.toggle()}>

@@ -788,3 +788,9 @@ Validation: backend regression suite, vet and gofmt checks; automatic-origin cus
 ### Unraid icon compatibility correction
 
 Replaced the hosted SVG references with a rendered 256x256 PNG in the Docker image labels, application template and CA profile. The original SVG remains the editable source. Structural checks verify the PNG signature/dimensions and matching URLs. Existing Unraid templates that explicitly saved the old SVG URL must update that saved field to the PNG URL; image metadata cannot override explicit container labels. Actual Unraid display confirmation remains pending.
+
+### Browser audio controls
+
+Added normal volume/mute and opt-in Web Audio gain up to 200%, with a 150% boost shortcut. Default remains 100%; boosting does not retune Plex or restart playback. One graph per player is reused across channel changes and released on exit. Browser support failures are displayed. Boost can distort loud sources; reset to 100% when unnecessary. This does not establish the cause of low audio on any specific user's source/device.
+
+Validation: 69 web tests, ESLint and production build passed. Tests cover volume/mute without media reload and gain reset/graph reuse/cleanup. Actual listening validation on the user's browser remains pending.
