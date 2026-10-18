@@ -1,4 +1,5 @@
 import { chooseGuideGroup } from "../guide/GuideGrid";
+import { ForYou } from "../personalization/ForYou";
 import { guideAPI, type WindowData, type Program } from "../guide/api";
 import { ProgramDetails } from "../guide/ProgramDetails";
 import { FavoriteButton } from "../guide/Dialog";
@@ -161,6 +162,7 @@ export function ViewerHome({
         </button>
       )}
       {error && <p role="status">{error}</p>}
+      <ForYou csrf={csrf} />
       <h2 className="on-now-heading">On Now</h2>
       {cards(items.filter((v) => !v.channel.recentKind))}
       <h2 className="on-now-heading">Favorite Channels</h2>

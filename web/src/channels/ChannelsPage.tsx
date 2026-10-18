@@ -16,6 +16,7 @@ import { Preview } from "./Preview";
 import "./channels.css";
 import { ScheduleAdmin } from "../scheduler/ScheduleAdmin";
 import { watch } from "../playback/api";
+import { SmartChannels } from "../personalization/SmartChannels";
 export function ChannelsPage({ session }: { session: Session }) {
   if (session.user.role === "USER")
     return (
@@ -37,6 +38,7 @@ export function ChannelsPage({ session }: { session: Session }) {
   return <ChannelAdmin csrf={session.csrfToken} />;
 }
 function ChannelAdmin({ csrf }: { csrf: string }) {
+  const [smart, setSmart] = useState(false);
   const [schedule, setSchedule] = useState<string | null>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -97,6 +99,17 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
       setBusy(false);
     }
   }
+  if (smart)
+    return (
+      <SmartChannels
+        csrf={csrf}
+        onClose={() => setSmart(false)}
+        onCreated={() => {
+          setSmart(false);
+          void reload();
+        }}
+      />
+    );
   if (schedule !== null)
     return (
       <ScheduleAdmin
@@ -163,6 +176,7 @@ function ChannelAdmin({ csrf }: { csrf: string }) {
           + Create channel
         </button>
         <button onClick={() => setManage(!manage)}>Manage groups</button>
+        <button onClick={() => setSmart(true)}>Create Smart Channel</button>
         <button onClick={() => setSchedule("")}>Scheduling studio</button>
         <label>
           Group

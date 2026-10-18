@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"afterglow.local/tv/internal/personalization"
 	"afterglow.local/tv/internal/plex"
 	"afterglow.local/tv/internal/scheduler"
 	"context"
@@ -14,6 +15,7 @@ import (
 )
 
 type liveSession struct {
+	history                    string
 	transition                 sync.Mutex
 	mu                         sync.Mutex
 	user, auth, client, server string
@@ -58,8 +60,13 @@ func safeProgram(p *scheduler.Entry) {
 		p.Artwork = "/api/v1/watch/channels/" + p.ChannelID + "/programs/" + artID + "/artwork"
 	}
 }
-func (s *Service) OnNow(ctx context.Context) ([]OnNow, error) {
-	rows, e := s.db.QueryContext(ctx, "SELECT id FROM channels WHERE enabled=1 AND visibility='VISIBLE' ORDER BY CAST(channel_number AS REAL),channel_number,id LIMIT 1000")
+func (s *Service) OnNow(ctx context.Context, users ...string) ([]OnNow, error) {
+	user := ""
+	if len(users) > 0 {
+		user = users[0]
+	}
+	now := s.Now().UnixMilli()
+	rows, e := s.db.QueryContext(ctx, `SELECT c.id FROM channels c LEFT JOIN user_channel_preferences p ON p.channel_id=c.id AND p.user_id=? LEFT JOIN viewer_preferences v ON v.user_id=? WHERE c.enabled=1 AND c.visibility='VISIBLE' AND COALESCE(p.hidden,0)=0 AND (NOT EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id) OR EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id AND aw.start_ms<=? AND aw.end_ms>?) OR EXISTS(SELECT 1 FROM channel_programs cp WHERE cp.channel_id=c.id AND cp.start_time_utc<=? AND cp.end_time_utc>?)) ORDER BY CASE WHEN v.order_mode='PERSONAL' THEN COALESCE(p.position,2147483647) ELSE 0 END,CAST(c.channel_number AS REAL),c.channel_number,c.id`, user, user, now, now, now, now)
 	if e != nil {
 		return nil, e
 	}
@@ -242,6 +249,10 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	}
 	if continuing != nil {
 		oldSource := continuing.source
+		if err := personalization.New(s.db).EndHistory(ctx, user, continuing.history, now.UnixMilli()); err != nil {
+			s.log.Error("Viewing history finalization failed")
+		}
+		continuing.history = s.startHistory(ctx, user, p, out, r.Capabilities.ClientType)
 		continuing.cancel()
 		streamCtx, cancel := context.WithCancel(context.Background())
 		continuing.source = resolved.Source
@@ -256,6 +267,7 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	}
 	streamCtx, cancel := context.WithCancel(context.Background())
 	v := &liveSession{user: user, auth: auth, client: r.ClientID, server: resolved.ServerID, caps: r.Capabilities, source: resolved.Source, tune: out, last: now.UnixMilli(), ctx: streamCtx, cancel: cancel}
+	v.history = s.startHistory(ctx, user, p, out, r.Capabilities.ClientType)
 	s.mu.Lock()
 	s.sessions[id] = v
 	s.mu.Unlock()
@@ -326,6 +338,9 @@ func (s *Service) Heartbeat(ctx context.Context, user, id string, h Heartbeat) (
 		return Update{}, e
 	}
 	v.last = now
+	if err := personalization.New(s.db).ObserveHistory(ctx, user, v.history, now, position, h.State); err != nil {
+		s.log.Error("Viewing history observation failed")
+	}
 	v.tune.Mode = mode
 	v.tune.Position = position
 	v.tune.State = h.State
@@ -355,9 +370,13 @@ func (s *Service) Stop(ctx context.Context, user, id string) error {
 		return nil
 	}
 	v.closed = true
+	history := v.history
 	v.cancel()
 	v.mu.Unlock()
 	_, e = s.db.ExecContext(ctx, "UPDATE viewing_sessions SET state='STOPPED',last_seen_at=? WHERE id=?", s.Now().UnixMilli(), id)
+	if err := personalization.New(s.db).EndHistory(ctx, user, history, s.Now().UnixMilli()); err != nil {
+		s.log.Error("Viewing history finalization failed")
+	}
 	if err := v.source.Close(context.Background()); err != nil {
 		s.log.Warn("Plex session cleanup deferred to server timeout", "session", id)
 	}
@@ -365,6 +384,19 @@ func (s *Service) Stop(ctx context.Context, user, id string) error {
 	delete(s.sessions, id)
 	s.mu.Unlock()
 	return e
+}
+
+func (s *Service) startHistory(ctx context.Context, user string, p *scheduler.Entry, t Tune, clientType string) string {
+	if p.Kind == "INTERSTITIAL" {
+		return ""
+	}
+	id := uid()
+	err := personalization.New(s.db).StartHistory(ctx, personalization.HistoryStart{ID: id, UserID: user, ChannelID: p.ChannelID, ProgramID: p.ID, MediaID: p.MediaID, Origin: t.Origin, ClientType: clientType, At: t.ServerTime, Position: t.Position, Duration: t.Duration})
+	if err != nil {
+		s.log.Error("Viewing history initialization failed")
+		return ""
+	}
+	return id
 }
 func (s *Service) Fetch(ctx context.Context, user, id, resource, rangeHeader string) (*http.Response, error) {
 	v, e := s.owned(user, id)

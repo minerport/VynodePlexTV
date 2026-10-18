@@ -567,3 +567,60 @@ New: migration 008; `internal/interstitials` domain/asset inspection/tests; pres
 Updated: scheduler generation/query/service/types, playback service/sessions/types/controller/player/home, Plex metadata/playback, channel artwork, guide cell/data/styles and tests, API registration/RBAC tests, Scheduling Studio, app navigation, Docker/Compose/env template, package metadata/lock, OpenAPI and project documentation.
 
 Recommended next phase: **Phase 7 Personalization and Smart Programming**, only after explicit instruction. Per-user ordering/favorites, local viewing-history signals, replaceable On Now ranking, explicit personalized/mood/actor/director/seasonal channel templates and household-aware home presentation. Keep deterministic schedules and user isolation authoritative.
+
+# Phase 7 validation — 2026-10-17
+
+Afterglow TV 0.8.0 upgrades Phase 6 commit ca3bca4f3929aad8061edadddad936ad74a63733 through migration 009_personalization.sql without resetting /config. The original image and stopped-volume backup remain available. No unrelated repository was modified.
+
+## Delivered and boundaries
+
+Private channel ordering/hiding, meaningful viewing history, rebuildable affinities, version-1 explainable For You / What's Good ranking, My Channels, history privacy controls, shared smart-template preview/creation, and explicit seasonal activation windows are implemented. Favorites remain the strongest explicit signal. Guide and mini-guide respect personal order; exact numeric tuning retains global channel numbers and can reach personally hidden channels. Hidden channels are excluded from normal discovery.
+
+History credits confirmed advancing playback, excludes presentation entries and duplicate/seek/disconnect time, requires 120 seconds for engagement and three engaged sessions for inferred affinities. Raw history retention is 180 days. Rebuilds are durable, bounded and rate-limited to once per minute per dirty user, with daily decay refresh. Clearing history removes derived affinities while preserving favorites, ordering, hiding, schedules and Plex data. Personal signals never rewrite shared schedules.
+
+Genre, actor, director, decade, explicit-show Comfort TV, Family Night, Weekend Movies and explicit-label seasonal templates use the existing RULE channel pipeline. Seasonal dates use timezone-aware inclusive local dates and preserve current/history at repair boundaries. Mood templates describe explicit metadata rules; they do not infer emotions or impose clock slots.
+
+## Automated validation
+
+| Check | Result |
+|---|---|
+| Backend fresh suite | PASS: 92 top-level tests / 199 cases |
+| Frontend Vitest | PASS: 64 tests |
+| Go vet and gofmt | PASS |
+| ESLint and Prettier | PASS |
+| Backend and frontend production builds | PASS |
+| Docker backend-test and production image | PASS |
+| Full container Chromium functional regression | PASS: one comprehensive journey, 41.2 seconds |
+| OpenAPI and diff checks | PASS |
+
+Coverage includes heartbeat idempotence/credit/clear, live/catch-up history, recency decay, content affinities, golden ranking/reasons and cold start, two-user isolation, guide filtering before pagination, preference reset, RBAC/CSRF, template compilation, seasonal DST/year boundaries/current protection/repair, and presentation priority at seasonal end. Existing assertions were retained. The browser regression exposed tablet navigation overflow after adding tabs; responsive wrapping/scrolling fixed it and the journey passed again. Vite retains the existing large HLS player chunk advisory.
+
+## Real application evidence
+
+Two temporary USER accounts exercised separate favorites, order, hidden state, affinities and recommendations against the actual Docker application. Three real decoded browser viewing sessions exceeded the engagement threshold and produced 35 derived affinities for one test user; the other user's affinities remained empty. Genre components influenced recommendations; favorites ranked prominently. Private history was cleared through the API, with preferences retained. Temporary accounts and authentication sessions were removed after validation. No individual watch titles or private history are included in this record.
+
+Four normal shared channels were created and retained: Action Network (1,284 matches), Tom Hanks Network (20), 90s Cinema (64), and Family Night (270). Each generated schedules and decoded real Plex-backed video. A temporary seasonal channel validated future dormancy, activation into the current horizon, expiry repair and current-program preservation, then was removed.
+
+A temporary presentation channel completed PROGRAM -> INTERSTITIAL -> INTERSTITIAL -> PROGRAM using Direct Play, local interstitial and metadata presentation within one viewer session. It was removed afterwards. Existing channel branding and presentation rules remain intact.
+
+My Channels was checked at desktop and 390-pixel mobile sizes; guide keyboard navigation, personal mini-guide order, recommendation reasons, template gallery and exact-number access to a hidden channel were verified. The full existing login/setup/navigation/persistence browser regression also passed.
+
+## Upgrade, integrity and recreation
+
+All 10,672 inventory identities and availability values match the Phase 6 backup. Owner, encrypted Plex credentials, five libraries, eight original channels/sources, four groups, static memberships, settings and baseline sessions were preserved. No reset or resynchronization was required.
+
+Final check after image recreation: 4,201 program entries and 797 presentation entries, zero duplicate positions, gaps, overlaps, invalid durations or missing media references. Counts naturally extend with maintenance. Of the original 3,069 program rows, 3,066 remained identical; three expired past entries were pruned by normal retention. All 795 original presentation rows remained identical.
+
+The same 13-day future timeline, asset, rule and branding fingerprints survived repeated container recreation and validation. Private preference/history/affinity snapshots also survived recreation before their deliberate privacy cleanup. Health/readiness passed on the configured LAN binding; version is 0.8.0. The service binds the configured LAN address rather than localhost.
+
+## Offline and performance
+
+With only this application's Plex connection temporarily made unreachable, guide, For You, What's Good, My Channels, history, On Now and Starting Soon remained available. Playback failed with retry; restoring the connection recovered decoded playback. Inventory and retained timeline fingerprints were unchanged.
+
+Local HTTP timings with twelve shared channels (including browser request overhead): For You 13.6–21.7 ms warm, What's Good 13.1–20.7 ms, affinities 6.3–15.7 ms, My Channels 6.8–19.9 ms, actor-template preview 28.7–35.2 ms. Earlier guide measurements were 10.4–18.6 ms. A final immediate post-recreation sample included a 110.3 ms For You request before settling near 17 ms; template preview was 32.2–44.5 ms. These are local interactive observations, not load or WAN benchmarks.
+
+## Security and limitations
+
+RBAC/CSRF and per-user ownership are enforced server-side. Shared template creation remains OWNER/ADMIN-only. Personal diagnostic scores expose only the requesting user's state. History is not written into general logs. The live source scan checked 191 source files against actual Plex credentials/encryption material without printing secrets and passed; ignored runtime databases, private evidence, clips and sessions are not committed. No unrelated webhook credential was used.
+
+Explicitly deferred: personal broadcast networks, personalization-dependent Unwatched membership, household aggregates, time-of-day inference and custom personal channel numbers. Comfort TV requires explicit show selection rather than fabricated affinity. Recommendation results are bounded to 24 and affinity diagnostics to 200. Physical TV, Safari, WAN and load validation remain pending; conservative single-part/1080p playback and existing Phase 6 upload limitations remain. Phase 8 has not begun.

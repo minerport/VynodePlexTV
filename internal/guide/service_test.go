@@ -2,11 +2,42 @@ package guide
 
 import (
 	"afterglow.local/tv/internal/database"
+
 	"context"
 	"fmt"
 	"testing"
 	"time"
 )
+
+func TestPersonalPreferencesBeforePagination(t *testing.T) {
+	s := fixture(t)
+
+	ctx := context.Background()
+	if _, err := s.db.Exec(`INSERT INTO viewer_preferences(user_id,updated_at,order_mode) VALUES('u',1,'PERSONAL'); INSERT INTO user_channel_preferences(user_id,channel_id,position) VALUES('u','1',0),('u','3',1),('u','0',2)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"now", "soon", "window"} {
+		q := Query{Kind: kind, Start: 2000000000000, End: 2000003600000, Limit: 1}
+		v, e := s.Window(ctx, "u", q)
+		if e != nil || len(v.Channels) != 1 || v.Channels[0].ID != "1" || !v.More {
+			t.Fatal(kind, v, e)
+		}
+		if _, e = s.db.Exec("UPDATE user_channel_preferences SET hidden=1 WHERE user_id='u' AND channel_id='1'"); e != nil {
+			t.Fatal(e)
+		}
+		v, e = s.Window(ctx, "u", q)
+		if e != nil || len(v.Channels) != 1 || v.Channels[0].ID != "0" || v.More {
+			t.Fatal(kind, v, e)
+		}
+		v, e = s.Window(ctx, "v", q)
+		if e != nil || !v.More || v.Channels[0].ID != "0" {
+			t.Fatal("user isolation", v, e)
+		}
+		if _, e = s.db.Exec("UPDATE user_channel_preferences SET hidden=0 WHERE user_id='u' AND channel_id='1'"); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
 
 func fixture(t *testing.T) *Service {
 	t.Helper()
@@ -144,7 +175,9 @@ func TestGuideNowSoonPaginationAndEmpty(t *testing.T) {
 func TestGuideLastChannelIsolation(t *testing.T) {
 	s := fixture(t)
 	ctx := context.Background()
-	s.db.Exec("INSERT INTO viewer_preferences VALUES('u','0',1)")
+	if _, err := s.db.Exec("INSERT INTO viewer_preferences(user_id,last_channel_id,updated_at) VALUES('u','0',1)"); err != nil {
+		t.Fatal(err)
+	}
 	id, e := s.Last(ctx, "u")
 	if e != nil || id != "0" {
 		t.Fatal(id, e)

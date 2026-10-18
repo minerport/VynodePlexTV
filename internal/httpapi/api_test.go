@@ -75,6 +75,13 @@ func TestAuthenticationAndPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert(call("PUT", "/api/v1/settings", `{"displayName":"Denied","timezone":"UTC"}`, origin, session.CSRF, cookie), 403)
+	assert(call("GET", "/api/v1/users/me/channels", "", "", "", cookie), 200)
+	assert(call("PATCH", "/api/v1/users/me/channels/order", `{"mode":"PERSONAL","channelIds":[]}`, origin, session.CSRF, cookie), 200)
+	assert(call("PATCH", "/api/v1/users/me/channels/order", `{"mode":"NUMBER"}`, origin, "", cookie), 403)
+	assert(call("GET", "/api/v1/users/me/history", "", "", "", cookie), 200)
+	assert(call("GET", "/api/v1/personalization/for-you", "", "", "", cookie), 200)
+	assert(call("GET", "/api/v1/smart-channel-templates", "", "", "", cookie), 403)
+	assert(call("DELETE", "/api/v1/users/me/history", "", origin, session.CSRF, cookie), 200)
 	if _, err = db.Exec("UPDATE users SET role='OWNER'"); err != nil {
 		t.Fatal(err)
 	}

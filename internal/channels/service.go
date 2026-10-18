@@ -349,6 +349,9 @@ func (s *Service) save(ctx context.Context, id string, d Definition, actor, acti
 	}
 	if created {
 		if duplicateFrom != "" {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO channel_activation_windows SELECT ?,start_date,end_date,timezone,start_ms,end_ms FROM channel_activation_windows WHERE channel_id=?`, id, duplicateFrom); err != nil {
+				return Channel{}, err
+			}
 			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings SELECT ?,mode,timezone,anchor_ms,lower(hex(randomblob(16))),movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,unixepoch(),unixepoch(),recency_weighted,avoid_same_show,min_other_shows FROM channel_schedule_settings WHERE channel_id=?`, id, duplicateFrom)
 		} else {
 			_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_settings(channel_id,mode,timezone,anchor_ms,seed,created_at,updated_at) SELECT ?,CASE WHEN ? IN('STATIC','SHOW') THEN 'SEQUENTIAL' ELSE 'SMART_RANDOM' END,timezone,?,lower(hex(randomblob(16))),unixepoch(),unixepoch() FROM app_settings WHERE id=1`, id, d.Source.Type, (stamp()-604800)*1000)

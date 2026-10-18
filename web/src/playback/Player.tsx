@@ -4,6 +4,7 @@ import { GuideGrid } from "../guide/GuideGrid";
 import { ProgramDetails } from "../guide/ProgramDetails";
 import { Dialog, FavoriteButton } from "../guide/Dialog";
 import { guideAPI } from "../guide/api";
+import { request } from "../api";
 import "../guide/guide.css";
 import { useEffect, useRef, useState } from "react";
 import { playbackAPI, watch, type OnNow } from "./api";
@@ -158,8 +159,13 @@ export function Player({
         setDigits(next);
         if (numberTimer.current) clearTimeout(numberTimer.current);
         numberTimer.current = setTimeout(() => {
-          const c = channels.find((c) => c.channel.number === next);
-          if (c) watch(c.channel.id);
+          void request<{ channelId: string }>(
+            `/watch/channel-number/${encodeURIComponent(next)}`,
+          )
+            .then((c) => watch(c.channelId))
+            .catch(() =>
+              setState((s) => ({ ...s, message: "Channel unavailable" })),
+            );
           setDigits("");
         }, 1200);
       }

@@ -91,6 +91,8 @@ func (a *API) Handler() http.Handler {
 	a.scheduleRoutes(mux)
 	a.playbackRoutes(mux)
 	a.guideRoutes(mux)
+	a.personalizationRoutes(mux)
+	a.smartTemplateRoutes(mux)
 	a.presentationRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)

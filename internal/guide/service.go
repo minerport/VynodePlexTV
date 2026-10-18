@@ -149,8 +149,10 @@ func (s *Service) Window(ctx context.Context, user string, q Query) (Window, err
 	if e != nil {
 		return o, e
 	}
-	filter := `c.enabled=1 AND c.visibility='VISIBLE' AND EXISTS(SELECT 1 FROM channel_programs WHERE channel_id=c.id)`
-	args := []any{user}
+	filter := `c.enabled=1 AND c.visibility='VISIBLE' AND COALESCE(pref.hidden,0)=0 AND EXISTS(SELECT 1 FROM channel_programs WHERE channel_id=c.id)`
+	args := []any{user, user, user}
+	filter += ` AND (NOT EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id) OR EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id AND aw.start_ms<=? AND aw.end_ms>?) OR EXISTS(SELECT 1 FROM channel_programs p WHERE p.channel_id=c.id AND p.start_time_utc<=? AND p.end_time_utc>?))`
+	args = append(args, now, now, now, now)
 	if q.Group != "" {
 		filter += " AND c.group_id=?"
 		args = append(args, q.Group)
@@ -159,7 +161,7 @@ func (s *Service) Window(ctx context.Context, user string, q Query) (Window, err
 		filter += " AND f.user_id IS NOT NULL"
 	}
 	args = append(args, q.Limit+1, q.Offset)
-	rows, e = s.db.QueryContext(ctx, `SELECT c.id,c.channel_number,c.name,COALESCE(c.group_id,''),COALESCE(g.name,''),f.user_id IS NOT NULL,COALESCE(st.status,'NEEDS_GENERATION'),COALESCE(json_extract(src.config_json,'$.recent.kind'),'') FROM channels c LEFT JOIN channel_groups g ON g.id=c.group_id LEFT JOIN user_channel_favorites f ON f.channel_id=c.id AND f.user_id=? LEFT JOIN scheduler_state st ON st.channel_id=c.id LEFT JOIN channel_sources src ON src.channel_id=c.id WHERE `+filter+` ORDER BY CAST(c.channel_number AS REAL),c.channel_number,c.id LIMIT ? OFFSET ?`, args...)
+	rows, e = s.db.QueryContext(ctx, `SELECT c.id,c.channel_number,c.name,COALESCE(c.group_id,''),COALESCE(g.name,''),f.user_id IS NOT NULL,COALESCE(st.status,'NEEDS_GENERATION'),COALESCE(json_extract(src.config_json,'$.recent.kind'),'') FROM channels c LEFT JOIN channel_groups g ON g.id=c.group_id LEFT JOIN user_channel_favorites f ON f.channel_id=c.id AND f.user_id=? LEFT JOIN user_channel_preferences pref ON pref.channel_id=c.id AND pref.user_id=? LEFT JOIN viewer_preferences vp ON vp.user_id=? LEFT JOIN scheduler_state st ON st.channel_id=c.id LEFT JOIN channel_sources src ON src.channel_id=c.id WHERE `+filter+` ORDER BY CASE WHEN vp.order_mode='PERSONAL' THEN COALESCE(pref.position,2147483647) ELSE 0 END,CAST(c.channel_number AS REAL),c.channel_number,c.id LIMIT ? OFFSET ?`, args...)
 	if e != nil {
 		return o, e
 	}

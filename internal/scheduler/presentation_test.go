@@ -8,6 +8,35 @@ import (
 	"time"
 )
 
+func TestSeasonalEndSkipsOptionalClipForMainProgram(t *testing.T) {
+	s, _, id := serviceFixture(t)
+	ctx := context.Background()
+	now := s.Now().UnixMilli()
+	if _, e := s.db.Exec(`INSERT INTO channel_activation_windows VALUES(?,'2026-10-17','2026-10-17','UTC',?,?)`, id, now, now+5000); e != nil {
+		t.Fatal(e)
+	}
+	a, e := s.Presentation.SaveAsset(ctx, interstitials.Asset{Name: "Next", Kind: "COMING_UP_NEXT", Source: "GENERATED_METADATA", Duration: 10000, Enabled: true}, "owner")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Presentation.SaveRule(ctx, interstitials.Rule{Name: "Before", ChannelID: id, Enabled: true, Kind: a.Kind, Placement: "BEFORE", Every: 1, MaxDuration: 20000}); e != nil {
+		t.Fatal(e)
+	}
+	brand := interstitials.DefaultBranding(id)
+	brand.Enabled = true
+	if e = s.Presentation.SaveBranding(ctx, brand); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Repair(ctx, id, ""); e != nil {
+		t.Fatal(e)
+	}
+	items := all(t, s, id)
+	if len(items) != 1 || items[0].Kind != "PROGRAM" || items[0].Start != now {
+		t.Fatal(items)
+	}
+	checkIntegrity(t, s, id)
+}
+
 func TestPersistedPresentationRepair(t *testing.T) {
 	s, _, id := serviceFixture(t)
 	ctx := context.Background()

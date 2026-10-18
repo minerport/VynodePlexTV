@@ -72,6 +72,9 @@ func (s *Service) Cleanup(ctx context.Context) error {
 	return e
 }
 func (s *Service) Recover(ctx context.Context) error {
+	if _, e := s.db.ExecContext(ctx, `UPDATE user_program_history SET ended_at=last_sample_at,last_state='STOPPED' WHERE ended_at IS NULL`); e != nil {
+		return e
+	}
 	// Restarted process cannot reuse stale proxy descriptors. Stop only our persisted Plex session IDs.
 	rows, e := s.db.QueryContext(ctx, "SELECT COALESCE(NULLIF(stream_session_id,''),id),plex_server_id,delivery_mode FROM viewing_sessions WHERE state<>'STOPPED'")
 	if e != nil {

@@ -69,6 +69,10 @@ func (s *Service) one(ctx context.Context, id, where string, args ...any) (*Entr
 }
 func (s *Service) Diagnostics(ctx context.Context, id string) ([]string, error) {
 	out := []string{}
+	windowStart, windowEnd, e := s.activation(ctx, id)
+	if e != nil {
+		return out, e
+	}
 	rows, e := s.db.QueryContext(ctx, `SELECT p.start_time_utc,p.end_time_utc,p.duration_ms,p.id,m.id FROM broadcast_timeline p LEFT JOIN plex_media_items m ON m.id=p.media_item_id WHERE channel_id=? ORDER BY start_time_utc`, id)
 	if e != nil {
 		return out, e
@@ -89,7 +93,9 @@ func (s *Service) Diagnostics(ctx context.Context, id string) ([]string, error) 
 			counts["overlaps"]++
 		}
 		if !first && a > end {
-			counts["gaps"]++
+			if !(windowEnd > 0 && end <= windowStart && a <= windowStart) {
+				counts["gaps"]++
+			}
 		}
 		if d <= 0 || b-a != d {
 			counts["invalid durations"]++
@@ -142,6 +148,13 @@ func (s *Service) Status(ctx context.Context, id string) (Status, error) {
 		return out, e
 	}
 	_, through := s.horizon(v)
+	windowStart, windowEnd, e := s.activation(ctx, id)
+	if e != nil {
+		return out, e
+	}
+	if windowEnd > 0 {
+		through = min(through, windowEnd)
+	}
 	if out.Count == 0 || out.End == nil || *out.End < through {
 		out.Status = "NEEDS_GENERATION"
 	}
@@ -150,6 +163,9 @@ func (s *Service) Status(ctx context.Context, id string) (Status, error) {
 	}
 	if len(items) == 0 {
 		out.Status = "EMPTY"
+	}
+	if windowEnd > 0 && (s.Now().UnixMilli() < windowStart || s.Now().UnixMilli() >= windowEnd) {
+		out.Status = "DORMANT"
 	}
 	if out.Error != "" {
 		out.Status = "ERROR"

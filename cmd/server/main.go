@@ -12,6 +12,7 @@ import (
 	"afterglow.local/tv/internal/config"
 	"afterglow.local/tv/internal/database"
 	"afterglow.local/tv/internal/httpapi"
+	"afterglow.local/tv/internal/personalization"
 	"afterglow.local/tv/internal/plex"
 	_ "time/tzdata"
 )
@@ -52,6 +53,14 @@ func main() {
 		return
 	}
 	schedulerDone := make(chan struct{})
+	personalizationDone := make(chan struct{})
+	go func() {
+		defer close(personalizationDone)
+		if err := personalization.New(db).Run(ctx); err != nil {
+			logger.Error("Personalization worker stopped unexpectedly")
+			stop()
+		}
+	}()
 	playbackDone := make(chan struct{})
 	go func() {
 		defer close(playbackDone)
@@ -92,4 +101,5 @@ func main() {
 	<-workerDone
 	<-schedulerDone
 	<-playbackDone
+	<-personalizationDone
 }

@@ -44,7 +44,7 @@ func authHash(r *http.Request) string {
 }
 func (a *API) playbackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/on-now", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
-		v, e := a.playback.OnNow(r.Context())
+		v, e := a.playback.OnNow(r.Context(), s.User.ID)
 		if e != nil {
 			a.playbackError(w, e)
 			return

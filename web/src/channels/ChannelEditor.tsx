@@ -15,6 +15,7 @@ import { MetadataPicker } from "./MetadataPicker";
 import { RuleBuilder } from "./RuleBuilder";
 import { Preview } from "./Preview";
 import { ScheduleAdmin } from "../scheduler/ScheduleAdmin";
+import { ActivationWindow } from "../personalization/ActivationWindow";
 export function ChannelEditor({
   initial,
   id,
@@ -479,6 +480,7 @@ export function ChannelEditor({
             ))}
           </div>
         )}
+        {id && <ActivationWindow id={id} csrf={csrf} />}
         <div className="channel-save">
           <button className="primary" disabled={busy}>
             {busy ? "Saving…" : "Save channel"}

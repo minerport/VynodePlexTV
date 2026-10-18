@@ -8,6 +8,7 @@ import (
 )
 
 type Request struct {
+	HardEnd                 int64
 	Presentation            interstitials.Snapshot
 	AssetHistory            map[string]int64
 	PreviousStart           int64
@@ -75,6 +76,10 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 			}
 		}
 		clips := r.Presentation.Select(r.Settings.Seed, m.Type, m.ID, seq, at, previousStart, r.Settings.Timezone, assetHistory)
+		// Optional presentation cannot postpone a valid feature beyond activation.
+		if r.HardEnd > 0 && len(clips) > 0 && clips[len(clips)-1].End >= r.HardEnd {
+			clips = nil
+		}
 		if len(clips) > 0 {
 			at = clips[len(clips)-1].End
 		}

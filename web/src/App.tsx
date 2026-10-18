@@ -1,4 +1,6 @@
 import { PresentationAdmin } from "./presentation/PresentationAdmin";
+import { MyChannels } from "./personalization/MyChannels";
+import { ForYou } from "./personalization/ForYou";
 import { GuideGrid } from "./guide/GuideGrid";
 import { watch } from "./playback/api";
 import {
@@ -36,10 +38,19 @@ const Player = lazy(() =>
 import { ViewerHome, ActiveViewers } from "./playback/ViewerHome";
 
 type Page =
-  "live" | "guide" | "channels" | "plex" | "settings" | "presentation";
+  | "live"
+  | "guide"
+  | "channels"
+  | "plex"
+  | "settings"
+  | "presentation"
+  | "my-channels"
+  | "whats-good";
 const pages: { id: Page; name: string; icon: typeof Tv }[] = [
   { id: "live", name: "Live TV", icon: Tv },
   { id: "guide", name: "Guide", icon: Grid2X2 },
+  { id: "my-channels", name: "My Channels", icon: Layers },
+  { id: "whats-good", name: "What’s Good", icon: Sparkles },
   { id: "channels", name: "Channels", icon: Layers },
   { id: "plex", name: "Plex Setup", icon: Radio },
   { id: "presentation", name: "Broadcast", icon: Clapperboard },
@@ -351,20 +362,26 @@ function Shell({
       <header>
         <Brand />
         <nav aria-label="Main navigation">
-          {pages.map(({ id, name, icon: Icon }) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              aria-current={page === id ? "page" : undefined}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(id);
-              }}
-            >
-              <Icon size={18} />
-              <span>{name}</span>
-            </a>
-          ))}
+          {pages
+            .filter(
+              (p) =>
+                session.user.role !== "USER" ||
+                !["channels", "plex", "presentation"].includes(p.id),
+            )
+            .map(({ id, name, icon: Icon }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                aria-current={page === id ? "page" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(id);
+                }}
+              >
+                <Icon size={18} />
+                <span>{name}</span>
+              </a>
+            ))}
         </nav>
         <div className="profile">
           <span className="avatar">
@@ -403,6 +420,12 @@ function Shell({
             userId={session.user.id}
             onTune={watch}
           />
+        ) : page === "my-channels" ? (
+          <MyChannels csrf={session.csrfToken} />
+        ) : page === "whats-good" ? (
+          <div className="viewer-home">
+            <ForYou csrf={session.csrfToken} expanded />
+          </div>
         ) : page === "presentation" ? (
           <PresentationAdmin session={session} />
         ) : page === "settings" ? (
@@ -547,7 +570,10 @@ function EmptyPage({
   page,
   navigate,
 }: {
-  page: Exclude<Page, "live" | "settings" | "presentation">;
+  page: Exclude<
+    Page,
+    "live" | "settings" | "presentation" | "my-channels" | "whats-good"
+  >;
   navigate: (p: Page) => void;
 }) {
   const content = {

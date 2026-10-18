@@ -8,6 +8,57 @@ import (
 	"testing"
 )
 
+func TestPhaseSixUpgradePreservesViewerPreferences(t *testing.T) {
+	dir := t.TempDir()
+	db, e := sql.Open("sqlite", filepath.Join(dir, "afterglow.db"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = db.Exec("CREATE TABLE schema_migrations(version TEXT PRIMARY KEY,checksum TEXT NOT NULL)"); e != nil {
+		t.Fatal(e)
+	}
+	files, e := migrations.ReadDir("migrations")
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, f := range files {
+		if f.Name() >= "009" {
+			break
+		}
+		b, e := migrations.ReadFile("migrations/" + f.Name())
+		if e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec(string(b)); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec("INSERT INTO schema_migrations VALUES(?,?)", f.Name(), fmt.Sprintf("%x", sha256.Sum256(b))); e != nil {
+			t.Fatal(e)
+		}
+	}
+	_, e = db.Exec(`INSERT INTO users VALUES('u','fixture','unchanged','OWNER',1);INSERT INTO sessions VALUES('fixture-session','u','fixture-csrf',9999999999);INSERT INTO channels(id,channel_number,name,channel_type,created_at,updated_at) VALUES('c','101','Fixture','STATIC',1,1);INSERT INTO user_channel_favorites VALUES('u','c',1);INSERT INTO viewer_preferences VALUES('u','c',1)`)
+	if e != nil {
+		t.Fatal(e)
+	}
+	db.Close()
+	db, e = Open(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	var mode, last string
+	var favorites int
+	if e = db.QueryRow("SELECT order_mode,last_channel_id FROM viewer_preferences WHERE user_id='u'").Scan(&mode, &last); e != nil {
+		t.Fatal(e)
+	}
+	if e = db.QueryRow("SELECT count(*) FROM user_channel_favorites WHERE user_id='u'").Scan(&favorites); e != nil {
+		t.Fatal(e)
+	}
+	if mode != "NUMBER" || last != "c" || favorites != 1 {
+		t.Fatal(mode, last, favorites)
+	}
+}
+
 func TestPhaseOneUpgradePreservesIdentityAndInventory(t *testing.T) {
 	dir := t.TempDir()
 	db, e := sql.Open("sqlite", filepath.Join(dir, "afterglow.db"))
@@ -66,7 +117,7 @@ func TestMigrationsAreIdempotentAndVerified(t *testing.T) {
 	if err = db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
-	if count != 8 {
+	if count != 9 {
 		t.Fatal(count)
 	}
 	if _, err = db.Exec("UPDATE schema_migrations SET checksum='tampered'"); err != nil {

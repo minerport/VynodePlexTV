@@ -2,7 +2,19 @@
 
 A standalone, self-hosted, TV-first home for Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 6 / 0.7.0:** Broadcast Presentation adds scheduled bumpers, idents, custom clips, available Plex trailers and next-up presentation to the full guide/player experience. Separate Recently Added Movies and TV networks, deterministic schedules, encrypted Plex connections and outage-safe local inventory remain intact. No sample media is presented as real content.
+**Phase 7 / 0.8.0:** Personal ordering, hidden channels, private viewing history, explainable discovery and explicit shared smart-channel templates extend the television experience. Personal discovery never rewrites shared broadcasts. See VALIDATION.md for validation status.
+
+## Your television
+
+Open **My Channels** to favorite, hide/show, drag channels into your order, or use Move up/down. Choose **Channel Number Order** or **My Order**. Guide, mini-guide, On Now, Starting Soon and personalized discovery respect hidden channels. Numeric tuning still resolves the original global number, including a personally hidden channel. Reset restores ordering and visibility while keeping favorites.
+
+**For You Right Now** and **What’s Good** rank already scheduled current/next programs, with reasons such as Favorite channel, Because you watch Action, or New this week. There is no cloud service, AI inference or Plex-history import. New users receive a favorites/timing/rating fallback. The diagnostic checkbox shows only your own score components.
+
+Viewing history is private to each application account. It records confirmed forward playback, not schedule exposure or station breaks. A meaningful visit requires two minutes; inferred affinities start after three meaningful visits. Pauses, seeks, duplicate heartbeats and long disconnects do not earn watch time. History is retained for 180 days and pruned in the background. **Clear Viewing History** removes your history and derived affinities; favorites, ordering, hidden channels, Plex data and broadcast schedules remain intact. An already-open stream cannot recreate a cleared row.
+
+Owners/admins open **Channels → Create Smart Channel** for Genre, Actor, Director, Decade, Comfort TV, Weekend Movies, Family Night and Seasonal templates. These create normal editable RULE channels after a real local membership preview. Comfort TV requires an explicit show choice. Family Night filters explicit content ratings; review the metadata before use. Weekend Movies is a theme, not a weekend-only clock schedule. Seasonal templates use a synchronized label and inclusive local dates. Channel editing also supports activation windows for explicit holiday rules built with genres, collections, titles or selections. Windows include the year; annual recurrence is not inferred. Current programs may finish after expiration. Shared templates do not use private history.
+
+Personal channels with independent schedules, Unwatched Movies membership, household aggregates and time-of-day inference are deferred. Phase 7 personalizes discovery, not the meaning of a shared channel number.
 
 ## Broadcast Presentation
 

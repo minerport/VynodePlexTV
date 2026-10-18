@@ -1,5 +1,15 @@
 # Implementation plan
 
+## Phase 7 — completed and validated
+
+Baseline: ca3bca4f3929aad8061edadddad936ad74a63733. Clean checkout, Phase 6 documentation and service boundaries inspected; baseline backend/frontend suites and production Docker build passed. Recovery image `afterglow-tv:phase6` and a stopped-volume Phase 6 backup were preserved before migration.
+
+Implement private preferences/history/affinities and deterministic explainable discovery; shared smart templates use the existing rule/schedule/presentation pipeline. Explicit seasonal windows are channel-wide. Personal broadcast timelines, household recommendations, Unwatched membership and time-of-day inference remain deferred. Do not silently personalize shared channel membership.
+
+Validation gates passed on 2026-10-17: 92 backend tests / 199 cases, 64 frontend tests, production builds, Docker browser regression, meaningful real viewing, two-user isolation, four shared template channels, seasonal activation/repair, offline/recovery and recreation. The retained 13-day timeline fingerprint remained identical. See VALIDATION.md for evidence and limitations.
+
+Next scope, only after a new instruction: **Phase 8 — Native TV Experience and Playback Quality**: Android/Google TV and Fire TV client, physical remote/lifecycle validation, audio/subtitle/version controls, quality and 4K/HDR negotiation, fast switching and native recovery. No Phase 8 implementation is included.
+
 ## Phase 1 — authorized continuation
 
 Baseline: cf65b5b3e5f315f2d0f2e4aa3f84852d29c8f7b6. Clean tree, documentation, migration/auth/settings code and existing tests were inspected before implementation. Phase 0 tests passed. Two incremental gaps were identified: its Plex interface was skeletal and it had no background runner. Expand the provider and add a durable single-worker queue without rewriting existing authentication or migration 001.
@@ -89,4 +99,4 @@ Extend the existing scheduler with persisted interstitial entries and a unified 
 
 Validation includes the real Phase 5 database upgrade, three configured persistent channels, private non-sensitive uploaded clips, real Plex trailers, decoded program → local clips → Plex trailer → metadata → next program under one viewer session, offline/recovery, restart and repair stability. Exact evidence and limits are in VALIDATION.md. The unrelated compromised webhook credential was not accessed or reused and remains an external follow-up.
 
-Recommended next scope, only with a new instruction: **Phase 7 — Personalization and Smart Programming**. Per-user channel ordering and richer favorites; viewing-history signals and replaceable On Now ranking; explicit personalized/mood/actor/director/seasonal channel creation; household preferences and a refined personal home. Preserve deterministic persisted schedules, user isolation and offline local membership. No Phase 7 work is started.
+Recommended next scope, only with a new instruction: **Phase 7 — Personalization and Smart Programming**. Per-user channel ordering and richer favorites; viewing-history signals and replaceable On Now ranking; explicit personalized/mood/actor/director/seasonal channel creation; household preferences and a refined personal home. Preserve deterministic persisted schedules, user isolation and offline local membership. Phase 7 was not part of the Phase 6 implementation.

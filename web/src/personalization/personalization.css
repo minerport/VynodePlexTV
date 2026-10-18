@@ -1,0 +1,101 @@
+.my-channels {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: clamp(1rem, 3vw, 3rem);
+}
+.my-channels h1 {
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  margin: 0.4rem 0;
+}
+.personal-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 2rem 0 1rem;
+}
+.personal-toolbar select {
+  margin-left: 1rem;
+  padding: 0.8rem;
+  background: #191725;
+  color: inherit;
+  border: 1px solid #615574;
+  border-radius: 0.7rem;
+}
+.personal-channel-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.personal-channel-list li {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  flex-wrap: wrap;
+  background: linear-gradient(115deg, #242031d9, #13131bd9);
+  border: 1px solid #71618155;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  backdrop-filter: blur(12px);
+}
+.personal-channel-list li > div {
+  flex: 1;
+  min-width: 220px;
+}
+.personal-channel-list strong {
+  font-size: 1.2rem;
+}
+.personal-channel-list small {
+  display: block;
+  color: #bcb5ca;
+  margin-top: 0.5rem;
+}
+.my-channels button {
+  padding: 0.75rem 1rem;
+  border-radius: 0.7rem;
+  border: 1px solid #76648d66;
+  background: #30263c;
+  color: #f5edf9;
+  min-height: 46px;
+}
+.my-channels button:focus-visible,
+.my-channels select:focus-visible {
+  outline: 3px solid #dcc0ff;
+  outline-offset: 3px;
+}
+.my-channels button:disabled {
+  opacity: 0.4;
+}
+.personal-explain {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+.personal-explain input {
+  width: auto;
+  min-width: 22px;
+  height: 22px;
+}
+.my-channels form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #71618155;
+  background: #1b1824b0;
+  border-radius: 1rem;
+}
+.my-channels form label {
+  display: grid;
+  gap: 0.5rem;
+}
+.my-channels form input,
+.my-channels form select {
+  padding: 0.85rem;
+  color: inherit;
+  background: #15131e;
+  border: 1px solid #76648d66;
+  border-radius: 0.6rem;
+}

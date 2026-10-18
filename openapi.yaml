@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.7.0
+  version: 0.8.0
   description: Self-hosted local inventory, deterministic broadcasts, authenticated Plex playback,
     guide/catch-up and personal viewer preferences. Mutations require exact Origin and session CSRF.
     Broadcast presentation is persisted in a unified timeline; optional clips consume real broadcast
@@ -20,6 +20,7 @@ tags:
   - name: Playback
   - name: Guide
   - name: Presentation
+  - name: Personalization
 paths:
   /health:
     get:
@@ -2032,7 +2033,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                moveTo: &a25
+                moveTo: &a30
                   type: string
                   nullable: true
                 ungroup: *a2
@@ -2575,7 +2576,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/OnNow"
-                  serverTime: &a36
+                  serverTime: &a41
                     type: integer
                     format: int64
         "400":
@@ -3509,7 +3510,7 @@ paths:
                   type: string
                   format: binary
                 name: *a23
-                kind: &a38
+                kind: &a43
                   type: string
                   enum:
                     - BUMPER
@@ -3697,6 +3698,494 @@ paths:
             schema:
               type: object
               properties: {}
+  /users/me/channels:
+    get:
+      tags:
+        - Personalization
+      summary: Own enabled channels, including personally hidden channels
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalChannels"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /users/me/channels/order:
+    patch:
+      tags:
+        - Personalization
+      summary: Save personal browse mode and optional full channel permutation
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: &a26
+                type: object
+                properties:
+                  ok: &a28
+                    type: boolean
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: &a44
+                  type: string
+                  enum:
+                    - NUMBER
+                    - PERSONAL
+                channelIds:
+                  type: array
+                  items: &a25
+                    type: string
+  /users/me/channels/{id}/hide:
+    post:
+      tags:
+        - Personalization
+      summary: Hide from own browsing; exact numeric tuning still works
+      security:
+        - sessionCookie: []
+      parameters:
+        - &a27
+          name: id
+          in: path
+          required: true
+          schema: *a25
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+    delete:
+      tags:
+        - Personalization
+      summary: Show in own browsing
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a27
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /users/me/channels/reset:
+    post:
+      tags:
+        - Personalization
+      summary: Reset only order and visibility; retain favorites
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /users/me/history:
+    get:
+      tags:
+        - Personalization
+      summary: Own viewing history, retained for 180 days; pages of 50
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ViewingHistory"
+                  retentionDays: &a29
+                    type: integer
+                    format: int64
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+    delete:
+      tags:
+        - Personalization
+      summary: Clear own history and derived affinities, preserving favorites/preferences and schedules
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /personalization/for-you:
+    get:
+      tags:
+        - Personalization
+      summary: Rank existing current/next broadcasts locally; personal signals only
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: debug
+          in: query
+          schema: *a28
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recommendations"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /personalization/whats-good:
+    get:
+      tags:
+        - Personalization
+      summary: Rank existing current/next broadcasts locally; personal signals only
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: debug
+          in: query
+          schema: *a28
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recommendations"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /personalization/affinities:
+    get:
+      tags:
+        - Personalization
+      summary: Own rebuildable affinities; never another user's history
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContentAffinity"
+                  rankingVersion: *a29
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /personalization/rebuild:
+    post:
+      tags:
+        - Personalization
+      summary: Queue own affinity rebuild
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: *a25
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /smart-channel-templates:
+    get:
+      tags:
+        - Personalization
+      summary: Owner/admin shared-channel template gallery
+      security:
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SmartTemplate"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /smart-channel-templates/preview:
+    post:
+      tags:
+        - Personalization
+      summary: Owner/admin preview through existing local resolver
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preview:
+                    $ref: "#/components/schemas/ChannelPreview"
+                  source:
+                    $ref: "#/components/schemas/ChannelSource"
+                  scheduleMode: *a25
+                  presentation: *a25
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SmartTemplateInput"
+  /smart-channel-templates/instantiate:
+    post:
+      tags:
+        - Personalization
+      summary: Owner/admin create normal shared channel and queue its schedule
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SmartTemplateInput"
+  /channels/{id}/activation:
+    get:
+      tags:
+        - Personalization
+      summary: Owner/admin inspect explicit seasonal dates
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a27
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivationWindow"
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+    patch:
+      tags:
+        - Personalization
+      summary: Owner/admin update inclusive local-date window and queue future repair
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a27
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+                timezone: *a25
+    delete:
+      tags:
+        - Personalization
+      summary: Owner/admin restore always-active scheduling and queue repair
+      security:
+        - sessionCookie: []
+      parameters:
+        - *a27
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: *a26
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
+  /watch/channel-number/{number}:
+    get:
+      tags:
+        - Personalization
+      summary: Resolve an enabled global number, independent of personal order/hiding
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema: *a25
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channelId: *a25
+        "400":
+          description: Invalid input
+        "401":
+          description: Sign in required
+        "403":
+          description: Role or Origin/CSRF denied
 components:
   securitySchemes:
     sessionCookie:
@@ -4422,39 +4911,39 @@ components:
             - AUTO
             - PLEX
             - UPLOAD
-        uploadId: *a25
+        uploadId: *a30
       required:
         - source
     ChannelDefinition:
       type: object
       additionalProperties: false
       properties:
-        number: &a26
+        number: &a31
           type: string
           pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
-        name: &a27
+        name: &a32
           type: string
           maxLength: 100
-        shortName: &a28
+        shortName: &a33
           type: string
           maxLength: 24
-        description: &a29
+        description: &a34
           type: string
           maxLength: 2000
-        groupId: *a25
+        groupId: *a30
         enabled: *a2
-        visibility: &a30
+        visibility: &a35
           type: string
           enum:
             - VISIBLE
             - HIDDEN
         sortOrder: *a5
-        logo: &a31
+        logo: &a36
           $ref: "#/components/schemas/ChannelAppearance"
-        background: &a32
+        background: &a37
           $ref: "#/components/schemas/ChannelAppearance"
-        artworkMediaId: *a25
-        source: &a33
+        artworkMediaId: *a30
+        source: &a38
           $ref: "#/components/schemas/ChannelSource"
       required:
         - number
@@ -4467,18 +4956,18 @@ components:
       type: object
       additionalProperties: false
       properties:
-        number: *a26
-        name: *a27
-        shortName: *a28
-        description: *a29
-        groupId: *a25
+        number: *a31
+        name: *a32
+        shortName: *a33
+        description: *a34
+        groupId: *a30
         enabled: *a2
-        visibility: *a30
+        visibility: *a35
         sortOrder: *a5
-        logo: *a31
-        background: *a32
-        artworkMediaId: *a25
-        source: *a33
+        logo: *a36
+        background: *a37
+        artworkMediaId: *a30
+        source: *a38
         id: *a1
         count: *a5
         warnings:
@@ -4605,7 +5094,7 @@ components:
         timezone:
           type: string
           description: IANA timezone
-        anchorMs: &a35
+        anchorMs: &a40
           type: integer
           format: int64
           description: UTC Unix milliseconds
@@ -4629,9 +5118,9 @@ components:
           type: integer
           minimum: 1
           maximum: 30
-        includeUnavailable: &a34
+        includeUnavailable: &a39
           type: boolean
-        enabled: *a34
+        enabled: *a39
         recencyWeighted: *a11
         avoidSameShow: *a11
         minOtherShows:
@@ -4657,8 +5146,8 @@ components:
         id: *a6
         channelId: *a6
         mediaId: *a6
-        start: *a35
-        end: *a35
+        start: *a40
+        end: *a40
         durationMs: *a7
         sequence: *a7
         revision: *a7
@@ -4671,7 +5160,7 @@ components:
         episode:
           type: integer
           nullable: true
-        available: *a34
+        available: *a39
         artwork:
           type: string
           description: Authenticated admin artwork proxy; never a Plex URL/token
@@ -4691,9 +5180,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScheduledProgram"
-        more: *a34
-        start: *a35
-        end: *a35
+        more: *a39
+        start: *a40
+        end: *a40
         timezone: *a6
     ScheduleStatus:
       type: object
@@ -4813,7 +5302,7 @@ components:
         audioCodecs:
           type: array
           items: *a9
-        maxHeight: *a36
+        maxHeight: *a41
         hls: *a11
         forceTranscode: *a11
       additionalProperties: false
@@ -4854,9 +5343,9 @@ components:
           type: integer
           format: int64
           description: UTC Unix milliseconds
-        liveOffsetMs: *a36
-        positionMs: *a36
-        durationMs: *a36
+        liveOffsetMs: *a41
+        positionMs: *a41
+        durationMs: *a41
         streamUrl:
           type: string
           description: Same-origin authenticated opaque proxy resource; never a Plex URL
@@ -4886,9 +5375,9 @@ components:
     PlaybackUpdate:
       type: object
       properties:
-        serverTime: *a36
+        serverTime: *a41
         mode: *a9
-        liveOffsetMs: *a36
+        liveOffsetMs: *a41
         transition: *a11
         ended: *a11
         message: *a9
@@ -4903,8 +5392,8 @@ components:
         mode: *a9
         state: *a9
         delivery: *a9
-        started: *a36
-        lastSeen: *a36
+        started: *a41
+        lastSeen: *a41
     GuideProgram:
       type: object
       properties:
@@ -4914,11 +5403,11 @@ components:
         title: *a17
         showTitle: *a17
         type: *a17
-        start: &a37
+        start: &a42
           type: integer
           format: int64
-        end: *a37
-        durationMs: *a37
+        end: *a42
+        durationMs: *a42
         season:
           type: integer
           format: int64
@@ -4968,10 +5457,10 @@ components:
             properties:
               id: *a17
               name: *a17
-        serverTime: *a37
+        serverTime: *a42
         timezone: *a17
-        start: *a37
-        end: *a37
+        start: *a42
+        end: *a42
         more: *a19
         warnings:
           type: array
@@ -5000,14 +5489,14 @@ components:
               type: array
               items: *a17
             background: *a17
-            serverTime: *a37
+            serverTime: *a42
             timezone: *a17
     PresentationAsset:
       type: object
       properties:
         id: *a23
         name: *a23
-        kind: *a38
+        kind: *a43
         source:
           type: string
           enum:
@@ -5045,7 +5534,7 @@ components:
           type: string
           description: Empty means global default
         enabled: *a22
-        kind: *a38
+        kind: *a43
         tag: *a23
         placement:
           type: string
@@ -5093,3 +5582,135 @@ components:
           type: integer
           minimum: 0
           maximum: 120
+    PersonalChannel:
+      type: object
+      properties:
+        id: *a25
+        number: *a25
+        name: *a25
+        hidden: *a28
+        favorite: *a28
+    PersonalChannels:
+      type: object
+      properties:
+        mode: *a44
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonalChannel"
+    ViewingHistory:
+      type: object
+      properties:
+        id: *a25
+        title: *a25
+        channelId:
+          type: string
+          nullable: true
+        startedAt: *a29
+        endedAt:
+          type: integer
+          format: int64
+          nullable: true
+        watchDurationMs: *a29
+        programDurationMs: *a29
+        completionRatio:
+          type: number
+          minimum: 0
+          maximum: 1
+        origin: *a25
+    ContentAffinity:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - genre
+            - show
+            - actor
+            - director
+            - channel
+        identity: *a25
+        name: *a25
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        engagedSessions: *a29
+    Recommendation:
+      type: object
+      properties:
+        channel:
+          $ref: "#/components/schemas/GuideChannel"
+        program:
+          $ref: "#/components/schemas/GuideProgram"
+        reasons:
+          type: array
+          items: *a25
+        score:
+          type: number
+          description: Own-user debug only
+        components:
+          type: object
+          additionalProperties:
+            type: number
+          description: Own-user debug only
+    Recommendations:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recommendation"
+        rankingVersion: *a29
+        serverTime: *a29
+        coldStart: *a28
+    SmartTemplate:
+      type: object
+      properties:
+        id: *a25
+        name: *a25
+        description: *a25
+        field: *a25
+    SmartTemplateInput:
+      type: object
+      properties:
+        template:
+          type: string
+          enum:
+            - genre
+            - actor
+            - director
+            - decade
+            - comfort
+            - weekend
+            - family
+            - seasonal
+        selection: *a25
+        name: *a25
+        number: *a25
+        mediaType:
+          type: string
+          enum:
+            - ""
+            - movie
+            - episode
+        decade:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        timezone: *a25
+    ActivationWindow:
+      type: object
+      properties:
+        enabled: *a28
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        timezone: *a25

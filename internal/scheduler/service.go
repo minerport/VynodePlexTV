@@ -143,6 +143,13 @@ func (s *Service) input(ctx context.Context, v Settings) (channels.Channel, []It
 		inputs = append(inputs, key)
 	}
 	config := hash(inputs)
+	windowStart, windowEnd, err := s.activation(ctx, v.ChannelID)
+	if err != nil {
+		return c, nil, 0, "", "", err
+	}
+	if windowEnd > 0 {
+		config = hash([]any{config, windowStart, windowEnd})
+	}
 	return c, items, len(media), hash([]any{config, items}), config, nil
 }
 func (s *Service) horizon(v Settings) (int64, int64) {
@@ -190,6 +197,13 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 		return out, invalid("Requested coverage exceeds configured future horizon")
 	}
 	now := s.Now().UnixMilli()
+	windowStart, windowEnd, e := s.activation(ctx, id)
+	if e != nil {
+		return out, e
+	}
+	if windowEnd > 0 {
+		through = min(through, windowEnd)
+	}
 	presentation, e := s.Presentation.Snapshot(ctx, id)
 	if e != nil {
 		return out, e
@@ -273,8 +287,13 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 			continue
 		}
 		bad := false
-		if i > 0 && p.Start-breakDurations[p.Start] != timeline[i-1].End {
+		if windowEnd > 0 && (p.Start-breakDurations[p.Start] < windowStart || p.Start-breakDurations[p.Start] >= windowEnd) {
 			bad = true
+		}
+		if i > 0 && p.Start-breakDurations[p.Start] != timeline[i-1].End {
+			if !(windowEnd > 0 && timeline[i-1].End <= windowStart && p.Start-breakDurations[p.Start] == windowStart) {
+				bad = true
+			}
 		}
 		m, ok := byID[p.MediaID]
 		if !ok || m.Duration != p.Duration {
@@ -304,6 +323,10 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	} else if st.Until != nil {
 		from = *st.Until
 		seq = st.Next
+	}
+	if len(timeline) == 0 && (windowEnd > 0 || conf != st.Config) {
+		from = v.Anchor
+		seq = 0
 	}
 	if cut < len(timeline) {
 		out.Repaired = len(timeline) - cut
@@ -395,7 +418,10 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	if cut > 0 {
 		previousStart = timeline[cut-1].Start
 	}
-	generated, e := Generate(ctx, Request{Presentation: presentation, AssetHistory: assetHistory, PreviousStart: previousStart, Settings: v, Items: items, From: from, Through: through, Sequence: seq, History: history, Previous: previous, Shows: shows})
+	if windowEnd > 0 {
+		from = max(from, windowStart)
+	}
+	generated, e := Generate(ctx, Request{HardEnd: windowEnd, Presentation: presentation, AssetHistory: assetHistory, PreviousStart: previousStart, Settings: v, Items: items, From: from, Through: through, Sequence: seq, History: history, Previous: previous, Shows: shows})
 	if e != nil {
 		return out, e
 	}
