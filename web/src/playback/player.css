@@ -17,7 +17,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s;
-  background: linear-gradient(transparent 20%, #080610e8 100%);
+  background: linear-gradient(transparent 20%, var(--surface-glass) 100%);
 }
 .player-chrome.shown {
   opacity: 1;
@@ -27,7 +27,7 @@
   position: absolute;
   top: 3vh;
   left: 3vw;
-  background: #17121dcc;
+  background: var(--surface-overlay);
 }
 .channel-overlay {
   position: absolute;
@@ -58,16 +58,16 @@
 .channel-ident > span {
   font-size: 48px;
   font-weight: 700;
-  color: #d9b8f5;
+  color: var(--accent);
 }
 .channel-ident small {
-  color: #d9b8f5;
+  color: var(--accent);
   letter-spacing: 2px;
 }
 .channel-overlay progress {
   width: 100%;
   height: 4px;
-  accent-color: #d9b8f5;
+  accent-color: var(--accent);
 }
 .player-controls {
   display: flex;
@@ -76,7 +76,7 @@
   margin: 14px 0;
 }
 .player-controls button {
-  background: #292032d9;
+  background: var(--surface-overlay);
   min-height: 48px;
 }
 .player-status {
@@ -84,7 +84,7 @@
   inset: 22% 20% auto;
   text-align: center;
   padding: 28px;
-  background: #16121deb;
+  background: var(--surface-overlay);
   border: 1px solid #ffffff25;
   border-radius: 22px;
   backdrop-filter: blur(18px);
@@ -95,7 +95,7 @@
   right: 5vw;
   top: 5vh;
   font-size: 64px;
-  background: #16121ddd;
+  background: var(--surface-overlay);
   padding: 24px;
   border-radius: 18px;
 }
@@ -117,7 +117,7 @@
   overflow: hidden;
   border: 1px solid #ffffff16;
   border-radius: 20px;
-  background: #19151f;
+  background: var(--surface);
   padding: 18px;
 }
 .on-now-card img {
@@ -133,7 +133,7 @@
 .on-now-card progress {
   width: 100%;
   height: 4px;
-  accent-color: #cfb1ee;
+  accent-color: var(--accent);
 }
 .on-now-card button {
   margin: 12px 8px 0 0;
@@ -145,7 +145,7 @@
   font-size: clamp(38px, 4.5vw, 70px);
 }
 .viewer-home > p {
-  color: #b9afc5;
+  color: var(--muted);
   font-size: 20px;
 }
 .on-now-heading {
@@ -154,7 +154,7 @@
 .active-viewers {
   margin: 30px 0;
   padding: 24px;
-  background: #17131d;
+  background: var(--surface);
   border-radius: 20px;
 }
 .active-viewers li {

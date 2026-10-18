@@ -243,3 +243,49 @@ func TestGuideExcludesInterstitialMicroCells(t *testing.T) {
 		t.Fatal(d, e)
 	}
 }
+
+func TestUngroupedMovieChannelAppearsInMovies(t *testing.T) {
+	s := fixture(t)
+	ctx := context.Background()
+	if _, e := s.db.Exec(`UPDATE channels SET group_id=NULL WHERE id='0'`); e != nil {
+		t.Fatal(e)
+	}
+	for _, kind := range []string{"now", "soon", "window"} {
+		q := Query{Group: "movies", Kind: kind, Start: 2000000000000, End: 2000003600000, Limit: 100}
+		w, e := s.Window(ctx, "u", q)
+		if e != nil || len(w.Channels) != 2 {
+			t.Fatal(kind, w, e)
+		}
+		q.Group = "tv"
+		w, e = s.Window(ctx, "u", q)
+		if e != nil || len(w.Channels) != 0 {
+			t.Fatal("movie leaked into TV", w, e)
+		}
+	}
+	if _, e := s.db.Exec(`UPDATE channels SET group_id='kids' WHERE id='0'`); e != nil {
+		t.Fatal(e)
+	}
+	w, e := s.Window(ctx, "u", Query{Group: "movies", Kind: "now", Limit: 100})
+	if e != nil || len(w.Channels) != 1 || w.Channels[0].ID != "1" {
+		t.Fatal("explicit category overridden", w, e)
+	}
+}
+func TestUngroupedMixedChannelIsNotMovieOnly(t *testing.T) {
+	s := fixture(t)
+	ctx := context.Background()
+	_, e := s.db.Exec(`UPDATE channels SET group_id=NULL WHERE id='0'; INSERT INTO plex_media_items(id,plex_server_id,plex_library_id,plex_rating_key,media_type,title,duration_ms,created_at,updated_at) VALUES('ep','s','l','ep','episode','Episode',3600000,1,1);UPDATE channel_programs SET media_item_id='ep' WHERE id='0-1'`)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, group := range []string{"movies", "tv"} {
+		w, e := s.Window(ctx, "u", Query{Group: group, Kind: "now", Limit: 100})
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, c := range w.Channels {
+			if c.ID == "0" {
+				t.Fatal("mixed network auto categorized", group)
+			}
+		}
+	}
+}

@@ -76,6 +76,7 @@ type Stream struct {
 	Profile         string `json:"profile"`
 }
 type MediaVersion struct {
+	HDR        string   `json:"hdr"`
 	PartKey    string   `json:"-"`
 	MediaIndex int      `json:"-"`
 	PartIndex  int      `json:"-"`

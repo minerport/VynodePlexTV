@@ -169,3 +169,21 @@ func TestInvalidEmptyAndCancelled(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestSequentialRepairFollowsPreservedEpisode(t *testing.T) {
+	items := fixtureItems()
+	prior := items[1]
+	r := Request{Settings: Settings{Mode: "SEQUENTIAL"}, Items: items, Previous: &prior, Sequence: 99, From: 1000, Through: 400000}
+	entries, e := Generate(context.Background(), r)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i, p := range entries {
+		if p.MediaID != items[(i+2)%len(items)].ID {
+			t.Fatal("repair skipped episode", p)
+		}
+	}
+	if entries[0].Sequence != 99 {
+		t.Fatal("changed timeline identity")
+	}
+}

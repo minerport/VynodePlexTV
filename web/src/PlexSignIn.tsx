@@ -39,6 +39,8 @@ export function PlexSignIn({
     setBusy(true);
     setError("");
     setStatus(null);
+    setLink(null);
+    setChoices({});
     try {
       setLink(await request<Link>("/plex/link", "POST", undefined, csrf));
     } catch (e) {
@@ -104,7 +106,7 @@ export function PlexSignIn({
         "POST",
         {
           serverId: resource.id,
-          uri: choices[resource.id] ?? resource.connections[0]?.uri,
+          uri: choices[resource.id] ?? "",
         },
         csrf,
       );
@@ -176,17 +178,20 @@ export function PlexSignIn({
                 <label>
                   Connection for {resource.name}
                   <select
-                    value={
-                      choices[resource.id] ?? resource.connections[0]?.uri ?? ""
-                    }
+                    value={choices[resource.id] ?? ""}
                     onChange={(e) =>
                       setChoices({ ...choices, [resource.id]: e.target.value })
                     }
                   >
+                    <option value="">
+                      Automatic secure connection (recommended)
+                    </option>
                     {resource.connections.map((c) => (
                       <option key={c.uri} value={c.uri}>
                         {c.local ? "Local" : "Remote"}
-                        {c.relay ? " relay" : ""} · {c.uri}
+                        {c.relay ? " relay" : ""}
+                        {c.protocol === "http" ? " · Unencrypted" : ""} ·{" "}
+                        {c.uri}
                       </option>
                     ))}
                   </select>

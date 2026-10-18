@@ -20,11 +20,11 @@
   gap: 28px;
   flex-wrap: wrap;
   padding: 25px 0;
-  color: #958b9f;
+  color: var(--muted);
   font-size: 12px;
 }
 .plex-metrics strong {
-  color: #dfc9f1;
+  color: var(--accent);
   font-size: 20px;
   margin-right: 6px;
   font-weight: 500;
@@ -45,9 +45,9 @@
   color: var(--muted);
 }
 .plex-tabs button[aria-current] {
-  background: #c6a7e617;
-  border-color: #c6a7e62c;
-  color: #e0caf3;
+  background: var(--accent-soft);
+  border-color: var(--line);
+  color: var(--accent);
 }
 .plex-content:focus {
   outline: none;
@@ -92,7 +92,7 @@
   margin-bottom: 18px;
 }
 .card-icon-static {
-  color: #cdb3e4;
+  color: var(--accent);
   display: grid;
   place-items: center;
   width: 45px;
@@ -197,17 +197,17 @@
   align-items: center;
   flex: 1;
   min-width: 180px;
-  color: #b99ed1;
+  color: var(--accent);
 }
 .library-main h3 {
-  color: #e3d7ed;
+  color: var(--text);
   font-size: 18px;
   font-weight: 500;
 }
 .library-main span,
 .library-summary span {
   font-size: 11px;
-  color: #93889e;
+  color: var(--muted);
   line-height: 1.8;
 }
 .library-summary {
@@ -217,12 +217,12 @@
 .library-summary strong {
   font-size: 13px;
   font-weight: 500;
-  color: #cdbedb;
+  color: var(--text);
 }
 .library-row button[aria-pressed="true"] {
-  color: #d6bbec;
-  border-color: #ac8bc34f;
-  background: #ac8bc31a;
+  color: var(--accent);
+  border-color: var(--line);
+  background: var(--accent-soft);
 }
 .job-progress {
   width: 100%;
@@ -238,7 +238,7 @@
   width: 100%;
   height: 6px;
   margin: 15px 0;
-  accent-color: #caa1ec;
+  accent-color: var(--accent);
   border: 0;
   border-radius: 4px;
 }
@@ -247,7 +247,7 @@
   border-radius: 4px;
 }
 .job-progress progress::-webkit-progress-value {
-  background: #caa1ec;
+  background: var(--accent);
   border-radius: 4px;
 }
 .job-progress p {
@@ -270,7 +270,7 @@
 .media-filters select,
 select {
   color: var(--text);
-  background: #13151b;
+  background: var(--surface-input);
   border: 1px solid var(--line);
   padding: 12px;
   border-radius: 8px;
@@ -377,7 +377,7 @@ select {
   cursor: default;
 }
 select:focus-visible {
-  outline: 3px solid #e9c4ff;
+  outline: 3px solid var(--accent);
   outline-offset: 4px;
 }
 @media (max-width: 1000px) {
@@ -445,7 +445,7 @@ select:focus-visible {
   margin-bottom: 24px;
   border: 1px solid #cfb2ee33;
   background:
-    radial-gradient(ellipse at 0 0, #8b65ae25, transparent 70%), #17151f;
+    radial-gradient(ellipse at 0 0, #8b65ae25, transparent 70%), var(--surface);
   border-radius: 14px;
   display: flex;
   gap: 25px;
@@ -462,7 +462,7 @@ select:focus-visible {
   max-width: 560px;
 }
 .plex-signin svg {
-  color: #c9a9e6;
+  color: var(--accent);
 }
 .plex-signin .primary svg {
   color: inherit;

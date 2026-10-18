@@ -624,3 +624,146 @@ Local HTTP timings with twelve shared channels (including browser request overhe
 RBAC/CSRF and per-user ownership are enforced server-side. Shared template creation remains OWNER/ADMIN-only. Personal diagnostic scores expose only the requesting user's state. History is not written into general logs. The live source scan checked 191 source files against actual Plex credentials/encryption material without printing secrets and passed; ignored runtime databases, private evidence, clips and sessions are not committed. No unrelated webhook credential was used.
 
 Explicitly deferred: personal broadcast networks, personalization-dependent Unwatched membership, household aggregates, time-of-day inference and custom personal channel numbers. Comfort TV requires explicit show selection rather than fabricated affinity. Recommendation results are bounded to 24 and affinity diagnostics to 200. Physical TV, Safari, WAN and load validation remain pending; conservative single-part/1080p playback and existing Phase 6 upload limitations remain. Phase 8 has not begun.
+
+## Phase 8 standalone pivot — work in progress
+
+The user superseded the server-dependent client design. The Android APK now bundles
+an ARM64 Go engine with native Compose/Media3 UI and app-private SQLite. Docker
+remains independent at the validated 0.8.0 deployment; no shared /config reset.
+
+Observed on physical NVIDIA Shield (Android 11):
+- APK installs and starts its bundled engine successfully.
+- Local database initializes and authenticated loopback IPC works.
+- Direct Plex QR sign-in creates a real authorization flow.
+- Fixed premature polling termination on WAITING with an empty servers array;
+  automated regression test covers WAITING versus AUTHORIZED.
+- Plex connection, discovery and selected-library synchronization run on-device;
+  observed a real synchronization processing 600 inventory records.
+
+Automated checks so far: all existing Go package suites passed; new embedded boot,
+private session and EOF shutdown integration test passed; platform vault, native
+quality/HDR and playback reconfiguration tests passed; five Kotlin tests passed.
+Android lint found a local SDK property escaping issue and Media3 opt-in requirement;
+fixes applied, rerun pending. No full Phase 8 completion claim or completion commit.
+Real playback, complete inventory sync, process restart, lifecycle, full TV journey,
+quality/track matrix and Fire TV validation remain outstanding.
+
+Additional physical Shield checks: Plex approval completed, libraries synchronized,
+and a local Genre channel was created and rendered in the native guide. An upgrade
+and application relaunch retained the Plex connection and local channel/schedule.
+A reported program-details focus bug was corrected with a native modal window.
+The Compose instrumentation test ran on the physical Shield and passed: initial
+focus moves to Back; D-pad Down focuses Watch Live; the guide remains unfocused.
+Web regression: 64 tests passed, production build passed, lint passed.
+Android lint rerun passed (dependency-update advisories remain).
+
+Physical playback evidence: observed real video frames in Afterglow's Media3 player
+on the Shield after tuning the locally scheduled channel. Audio, negotiated delivery
+mode, offset tolerance and subtitle/version changes are not inferred from that image;
+those require separate verification. The private screenshot remains ignored.
+
+### Native visual refinement — October 17
+Refined shared native controls, active navigation, charcoal/sea-glass palette,
+section hierarchy, artwork cards, and cinematic home hero. Separated guide Now
+label from time ticks. Debug APK build, local unit suite and Android lint passed.
+Installed on the physical Shield; inspected home rendering. Modal focus
+instrumentation passed on Shield (1 test). This visual pass does not establish
+completion of the outstanding Phase 8 playback/hardware matrix.
+
+### Shield partial-sync repair
+Physical-device jobs repeatedly failed at 100/7,166 TV records and earlier at
+800/3,506 movie records. Safe SQLite error-code reporting identified 6410
+(SQLITE_IOERR_GETTEMPPATH), rather than a Plex availability failure. The native
+engine now receives app-private SQLITE_TMPDIR/TMPDIR before process startup.
+Installed the corrected APK without clearing data. Retried the currently
+selected library using incremental synchronization: SUCCEEDED, 7,166/7,166,
+299 seconds including test startup/polling. This run validates the selected TV
+library; the previously failed movie library was not selected for this retry.
+Android build/unit/lint and Go Plex/embedded-engine tests passed. A safe database
+error regression test verifies diagnostic codes do not expose underlying data.
+Temporary live diagnostics remain ignored, outside production/test sources.
+
+### Show-channel creation ordering
+The shared Comfort TV/Show template now creates a dedicated SHOW source instead
+of an episode RULE. Existing SHOW membership sorts numerically by season and
+episode; channel creation assigns SEQUENTIAL scheduling. Native and web previews
+report this mode. Existing channel definitions/timelines are not migrated.
+Template regression plus channel/scheduler/API suites pass; full backend tests,
+vet/format checks and 64 web tests/lint pass. Docker build and deployed readiness
+returned 200. No inventory or config reset.
+
+### Appearance themes — October 18
+Added five coordinated palettes and device-local density/effect preferences to
+web and native clients. 66 web tests passed, including theme persistence and
+invalid-storage fallback; web lint/production build and Docker build passed.
+Android build, unit tests and lint passed. Installed on physical Shield and
+visually verified Settings theme controls and live Ember palette application.
+Web authenticated visual check was unavailable in the signed-out test browser;
+component tests cover its selection/persistence behavior. Docker readiness 200.
+
+### Guide search remote activation — October 18
+Replaced the native guide inline text field with a search button. A dialog
+creates text input only after explicit activation; apply/cancel hides the keyboard
+and restores button focus. Active search is visible and can be cleared separately.
+APK build/unit tests/lint passed. Physical Shield instrumentation passed (1 test):
+button focus alone creates no editor, activation opens it, applying filters removes
+it and restores focus, and Clear removes the filter. Installed and relaunched APK.
+
+### Automatic inventory-to-channel updates — October 18
+Migration 010 changes only the original 21600-second sync interval to 900 seconds.
+Custom intervals remain untouched (regression tested). Successful authoritative
+sync now atomically queues deduplicated schedule repair checks for enabled channels.
+Tests cover deduplication, disabled-channel exclusion, failed-scan non-queueing,
+and safe database upgrade. All backend packages passed; existing scheduler tests
+verify newly eligible membership, current/history protection and timeline integrity.
+Android build/unit/lint passed; Docker built/recreated with readiness 200.
+This validation uses synthetic new inventory, not a new upload to the real Plex
+server. Android monitoring requires its local process to be alive; no persistent
+background Android service is claimed.
+
+### Channel setup simplification (2026-10-18)
+- Native Channel Studio separates the existing channel list from a three-step creation flow: type, content, review. Search requires explicit activation. Optional number and content-type filters remain available; show templates retain season/episode order. Failed previews offer retry/back.
+- Web editor groups essentials into identity/content and collapses advanced visibility and artwork controls without removing the rule builder, show selection, or scheduling editor.
+- Web: 66 tests passed; ESLint and production build passed (existing large player-chunk advisory remains). Android debug build, unit tests, and lint passed. APK installed in-place on Shield; Docker rebuilt/recreated and readiness returned HTTP 200.
+- Native creation remains template-based; the web editor remains the more comprehensive custom-rule/artwork/scheduling editor. No existing channel or timeline migration was performed.
+
+### Existing show-channel order repair (2026-10-18)
+- Physical Shield inspection confirmed an existing single-show channel still used the legacy RULE source and SMART_RANDOM mode; previous default changes only affected new channels.
+- Migration 011 converts only the exact legacy availability + show + episode template to SHOW/SEQUENTIAL and queues safe future repair. Mixed rules and Recently Added are not converted. Specials remain included to preserve legacy membership.
+- Sequential generation now continues after the last preserved media item rather than indexing changed membership using the old timeline sequence number.
+- Full Go internal/cmd suites passed, including migration idempotence/non-target preservation and sequential-repair continuation regressions. Android build/unit/lint passed. Docker rebuilt/recreated; readiness HTTP 200. APK installed in place without resetting data.
+- Post-upgrade physical Shield read-only verification: affected channel is SHOW/SEQUENTIAL; future sequence advances S01E04–E09, S02E01–E08, then wraps S01E01. Repair SUCCEEDED with 371 future entries rebuilt. Temporary device diagnostic source retained only in ignored local diagnostics.
+
+### Channel customization and guide categories (2026-10-18)
+- Replaced the APK's 50-item vertical metadata list with cancellable search and 12-item, three-column pages. Search/text editing requires explicit activation. Added editable group, ordering, repeat windows, year/rating constraints and existing-channel configuration.
+- Shared template API persists guide group and scheduler choices. Added API persistence/invalid-option test and rule-compiler coverage for year/rating constraints. Web smart templates expose these controls behind progressive disclosure.
+- Guide retains explicit group semantics and recognizes ungrouped movie-only/episode-only timelines. Tests cover Movies/TV classification, explicit-group precedence and mixed-content exclusion. Native refresh now retains group/favorites, and focused detail state cannot remain attached to a channel excluded by the filter.
+- Shield read-only inspection found the user's Animation channel contained both movie and episode entries. Corrected that specific channel through the normal API to movies-only and Movies group, then queued future repair. Live API assertions confirmed it appears in Movies and All.
+- Physical Shield Compose D-pad grid test passed on a dedicated rerun after a wake command; the initial combined run failed because no Compose hierarchy was available. Android unit tests including source-edit preservation, APK build and lint passed. Full Go suites passed; web 66 tests, lint and production build passed. Docker rebuilt/recreated, readiness HTTP 200; APK installed in place.
+- Existing web player bundle-size advisory remains. Native arbitrary nested-rule editing and artwork uploads remain web-only; the APK now provides common programming constraints and channel/scheduler editing.
+
+### Web layout density pass — 2026-10-18
+
+Added a shared shell-scoped compact layout for viewer cards, channel administration, Plex management, Scheduling Studio, Broadcast Presentation, My Channels and settings. Reduced desktop header, panel spacing, card artwork heights and form spacing; retained responsive grids and coarse-pointer target sizes. Scoped shell header/navigation rules to prevent nested header leakage, and restricted artwork density rules to program art rather than channel badges. Full-screen player presentation rules remain separately owned.
+
+Validation: 66 web tests passed; ESLint, Prettier checks and TypeScript/Vite production build passed. Docker image built and container recreated using the existing persistent volume. Readiness returned HTTP 200 and the running server served the new CSS bundle. Existing player bundle size warning remains. This pass has not had authenticated browser visual review; automated checks do not establish visual correctness on every page.
+
+### Plex sign-in portability hardening — 2026-10-18
+
+Audit found that PIN account authorization was already standard, but clients defaulted to the first advertised interface and required users to find a reachable address manually. Added shared bounded automatic HTTPS discovery, identity/library-access verification, endpoint deduplication, scheme normalization and remote-route prioritization. Extended the strict DNS fallback to IPv6 without disabling TLS validation. Web setup defaults to automatic discovery and labels explicit HTTP addresses unencrypted; Android setup offers automatic secure connection. Restarting web sign-in clears stale flow/connection choices.
+
+Validation: full Go internal/cmd suites passed; secure mock-server tests cover unreachable alternatives, wrong identity, rejected credentials, no HTTP downgrade, account isolation and persistence. IPv6 fallback and existing TLS-rejection tests passed. All 67 web tests, ESLint and production build passed; focused sign-in tests passed again after the final state-reset change. Docker image built, recreated with existing volume and readiness returned 200. Android embedded engine and debug APK built; native sign-in on physical hardware and fresh Plex account approval remain pending. No production Plex address or token was added to connection logic. This is not a claim of universal network reachability; firewall/VPN/remote-access conditions still apply. Existing saved endpoints are not automatically rediscovered after a future address change.
+
+Android validation completed: debug APK, JVM unit tests and Android lint passed. APK output: clients/android-tv/app/build/outputs/apk/debug/app-debug.apk. Not installed on Shield in this pass; fresh QR sign-in remains unvalidated on hardware.
+
+### Theme consistency — 2026-10-18
+
+Replaced fixed purple colors in program details dialogs, mini-guide, player overlays/controls, guide states, presentation surfaces, channel editing controls and shared form/focus states with theme-derived semantic colors. Theme swatches and warning/error distinctions remain intentional. Changes apply to Docker/web; no native theme changes in this pass. Web regression: 67 tests passed, ESLint and production builds passed. No claim of authenticated visual verification across all five themes.
+
+Operator confirmed the preceding automatic secure Plex sign-in reconnect succeeded on the local setup. Other networks and fresh Android QR approval remain unvalidated.
+
+### Public beta packaging — 2026-10-18
+
+Prepared 0.9.1 for minerport/VynodePlexTV, preserving its GPL-3.0 license and independent Afterglow branding. Added GitHub CI/tag release workflows, versioned public-image references, signed ARM64 APK build, checksums, CA profile/template, hosted SVG icon and Unraid/release documentation. Release signing material is outside the checkout with restricted local permissions and encrypted Actions secrets.
+
+Local validation: complete Go tests/vet/format checks passed in the backend-test image; 67 web tests, ESLint, Prettier and production build passed. Android unit tests, release lint and signed release assembly passed; apksigner verified v2 signature. Gitleaks found no leaks in Git history or exported staged source. Template/profile XML structural checks passed. UID 99:100 with a separate writable appdata bind mount passed readiness, owner creation and login. An initial empty named-volume fixture inherited the image UID 10001 and correctly failed to write; the actual Unraid template uses a writable host bind mount and documents ownership requirements. Physical Unraid and CA hosted validation/acceptance remain separate, unclaimed checks. Existing debug-signed Shield data was not replaced by the new release certificate.

@@ -16,10 +16,11 @@ FROM backend-base AS backend-test
 RUN go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
 
 FROM backend-base AS backend
-ARG VERSION=0.8.0
+ARG VERSION=0.9.1
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /server ./cmd/server
 
 FROM alpine:3.23 AS runtime
+LABEL org.opencontainers.image.title="Afterglow TV" org.opencontainers.image.source="https://github.com/minerport/VynodePlexTV" org.opencontainers.image.licenses="GPL-3.0"
 RUN apk add --no-cache ca-certificates tzdata ffmpeg && addgroup -g 10001 app && adduser -D -u 10001 -G app app && mkdir -p /config && chown app:app /config
 WORKDIR /app
 COPY --from=backend /server /app/server

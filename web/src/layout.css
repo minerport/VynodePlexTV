@@ -1,0 +1,415 @@
+/* Shared web layout. Scoped to the shell so the full-screen player keeps TV controls. */
+body {
+  font-size: 14px;
+}
+.app-shell {
+  --page-gap: 16px;
+}
+.app-shell > header {
+  min-height: 68px;
+  gap: 18px;
+  padding: 10px 2.5%;
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+}
+.app-shell > header .brand {
+  font-size: 22px;
+}
+.app-shell > header nav {
+  gap: 3px;
+  overflow-x: auto;
+  justify-content: flex-start;
+  scrollbar-width: thin;
+}
+.app-shell > header nav a {
+  padding: 10px 11px;
+  font-size: 12px;
+  gap: 7px;
+  white-space: nowrap;
+}
+.app-shell > main {
+  padding: 22px 2.5% 32px;
+  width: 100%;
+  max-width: 1920px;
+  margin-inline: auto;
+}
+.app-shell > footer {
+  padding: 14px 2.5%;
+  font-size: 11px;
+}
+.app-shell
+  :is(
+    .channel-page,
+    .channel-editor,
+    .plex-page,
+    .my-channels,
+    .presentation-admin,
+    .viewer-home
+  ) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.app-shell
+  :is(.destination-heading, .plex-heading, .viewer-home, .my-channels)
+  h1 {
+  font-size: clamp(28px, 2.5vw, 38px);
+  letter-spacing: -1.2px;
+  margin: 8px 0 10px;
+}
+.app-shell :is(.destination-heading, .plex-heading, .viewer-home) > p {
+  font-size: 14px;
+  max-width: 76ch;
+}
+.app-shell .eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+}
+.app-shell
+  :is(
+    .settings-panel,
+    .channel-panel,
+    .channel-preview,
+    .channel-identity-preview,
+    .server-card,
+    .connection-form,
+    .library-row,
+    .job-card,
+    .media-detail,
+    .active-viewers,
+    .plex-signin,
+    .presentation-admin > section
+  ) {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px #00000012;
+}
+.app-shell
+  :is(
+    .channel-panel,
+    .channel-preview,
+    .channel-identity-preview,
+    .presentation-admin > section,
+    .active-viewers
+  ) {
+  margin: 14px 0;
+}
+.app-shell :is(.panel-title, .plex-toolbar, .server-card-top) {
+  margin-bottom: 14px;
+}
+.app-shell
+  :is(
+    .panel-title,
+    .plex-toolbar,
+    .channel-panel,
+    .channel-preview,
+    .plex-signin
+  )
+  h2 {
+  font-size: 19px;
+  margin: 0 0 8px;
+}
+.app-shell :is(.channel-actions, .personal-toolbar) {
+  margin: 14px 0;
+  gap: 8px;
+}
+.app-shell :is(.channel-editor-layout, .settings-layout) {
+  gap: 18px;
+}
+.app-shell :is(.channel-grid, .server-grid, .schedule-grid) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+  gap: 14px;
+}
+.app-shell .channel-card {
+  border-radius: 12px;
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.app-shell .channel-card-art {
+  height: 120px;
+  padding: 16px;
+  gap: 12px;
+}
+.app-shell .channel-card-art img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+}
+.app-shell .channel-number {
+  font-size: 30px;
+}
+.app-shell .channel-card-body {
+  padding: 16px;
+}
+.app-shell .channel-card-body h2 {
+  font-size: 20px;
+  margin: 8px 0;
+}
+.app-shell .channel-card-body p {
+  font-size: 13px;
+}
+.app-shell :is(.connection-fields, .channel-filters, .schedule-fields) {
+  gap: 12px;
+}
+.app-shell .schedule-fields {
+  margin: 14px 0;
+}
+.app-shell
+  :is(
+    .settings-panel,
+    .channel-editor,
+    .channel-panel,
+    .schedule-page,
+    .connection-form,
+    .presentation-admin
+  )
+  label {
+  margin: 12px 0;
+  gap: 7px;
+  font-size: 13px;
+}
+.app-shell
+  :is(
+    .settings-panel,
+    .channel-editor,
+    .channel-panel,
+    .schedule-page,
+    .connection-form,
+    .presentation-admin,
+    .my-channels
+  )
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 14px;
+  min-width: 0;
+}
+.app-shell .field-help {
+  margin: 8px 0 16px;
+  font-size: 12px;
+}
+.app-shell .settings-aside {
+  padding: 22px;
+}
+.app-shell .settings-aside h3 {
+  font-size: 20px;
+  margin: 14px 0 8px;
+}
+.app-shell .settings-aside p {
+  margin-bottom: 16px;
+}
+.app-shell .plex-metrics {
+  padding: 16px 0;
+  gap: 22px;
+}
+.app-shell .plex-metrics strong {
+  font-size: 18px;
+  color: var(--accent);
+}
+.app-shell .plex-tabs {
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+}
+.app-shell .server-card h3 {
+  font-size: 19px;
+}
+.app-shell .server-url {
+  margin: 8px 0 14px;
+}
+.app-shell .server-card dl > div {
+  padding: 8px 0;
+}
+.app-shell :is(.library-list, .job-list) {
+  gap: 10px;
+}
+.app-shell .library-main h3 {
+  font-size: 16px;
+}
+.app-shell .media-grid {
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 14px;
+}
+.app-shell .media-filters {
+  margin-bottom: 16px;
+  gap: 10px;
+}
+.app-shell .linked-server {
+  padding: 14px;
+}
+.app-shell .schedule-page > .eyebrow {
+  margin-top: 12px;
+}
+.app-shell .schedule-programs li {
+  grid-template-columns: 190px 44px minmax(0, 1fr);
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.app-shell .schedule-programs img {
+  width: 44px;
+  height: 62px;
+}
+.app-shell .schedule-programs h3 {
+  font-size: 16px;
+}
+.app-shell .schedule-programs p {
+  font-size: 12px;
+  margin: 3px 0;
+}
+.app-shell .personal-channel-list {
+  gap: 8px;
+}
+.app-shell .personal-channel-list li {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--surface);
+  border-color: var(--line);
+}
+.app-shell .personal-channel-list strong {
+  font-size: 16px;
+}
+.app-shell .personal-channel-list small {
+  margin-top: 4px;
+}
+.app-shell .my-channels form {
+  padding: 18px;
+  gap: 12px;
+  background: var(--surface);
+}
+.app-shell .on-now-heading {
+  margin: 24px 0 12px;
+  font-size: 21px;
+}
+.app-shell .on-now-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 235px), 1fr));
+  gap: 14px;
+}
+.app-shell .on-now-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border-color: var(--line);
+}
+.app-shell .on-now-card .program-art {
+  height: 130px;
+  border-radius: 8px;
+}
+.app-shell .on-now-card .channel-badge {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.app-shell .on-now-card h3 {
+  font-size: 18px;
+  margin: 10px 0 5px;
+}
+.app-shell .on-now-card p {
+  font-size: 12px;
+}
+.app-shell .on-now-card button {
+  font-size: 12px;
+  margin: 10px 6px 0 0;
+}
+.app-shell .empty-panel {
+  min-height: 240px;
+  padding: 28px 20px;
+}
+.app-shell .empty-panel h2 {
+  margin: 14px 0 8px;
+}
+.app-shell .appearance-options {
+  margin-top: 14px;
+  gap: 10px;
+}
+/* Keep guide geometry and player hit targets owned by their components. */
+.app-shell
+  :is(
+    .channel-page,
+    .channel-editor,
+    .plex-page,
+    .settings-layout,
+    .appearance-panel,
+    .my-channels,
+    .presentation-admin,
+    .schedule-page,
+    .on-now-card
+  )
+  button {
+  min-height: 40px;
+  padding: 9px 13px;
+  gap: 8px;
+  font-size: 13px;
+}
+.app-shell :is(button, a, input, select, summary):focus-visible {
+  outline-color: var(--accent);
+  outline-offset: 3px;
+}
+.welcome .welcome-form {
+  padding: 36px 10%;
+}
+.welcome .welcome-copy h1 {
+  font-size: clamp(36px, 4vw, 58px);
+}
+:root[data-density="cinematic"] .app-shell .on-now-card .program-art {
+  height: 165px;
+}
+@media (max-width: 1100px) {
+  .app-shell > header {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+  .app-shell > header nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .app-shell > header .profile {
+    margin-left: auto;
+  }
+}
+@media (max-width: 700px) {
+  .app-shell > main {
+    padding: 18px 16px 28px;
+  }
+  .app-shell > header {
+    padding: 10px 16px;
+  }
+  .app-shell :is(.channel-editor-layout, .settings-layout) {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .on-now-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .app-shell .on-now-card {
+    padding: 10px;
+  }
+  .app-shell .on-now-card .program-art {
+    height: 100px;
+  }
+  .app-shell .on-now-card h3 {
+    font-size: 16px;
+  }
+  .app-shell .media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .app-shell .schedule-programs li {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .app-shell .schedule-programs time {
+    grid-column: 1 / -1;
+  }
+  .app-shell .personal-channel-list li > div {
+    min-width: 100%;
+  }
+}
+@media (pointer: coarse) {
+  .app-shell button,
+  .app-shell > header nav a {
+    min-height: 44px;
+  }
+  .app-shell .guide-channel button {
+    min-width: 32px;
+  }
+}

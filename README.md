@@ -2,7 +2,14 @@
 
 A standalone, self-hosted, TV-first home for Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 7 / 0.8.0:** Personal ordering, hidden channels, private viewing history, explainable discovery and explicit shared smart-channel templates extend the television experience. Personal discovery never rewrites shared broadcasts. See VALIDATION.md for validation status.
+**0.9.1 beta — Docker/web and standalone Android TV:** Personal ordering, hidden channels, private viewing history, explainable discovery and explicit shared smart-channel templates extend the television experience. Personal discovery never rewrites shared broadcasts. See VALIDATION.md for validation status.
+
+## Install
+
+- [Signed Android TV APK and checksums](https://github.com/minerport/VynodePlexTV/releases/tag/v0.9.1). ARM64; runs independently of Docker.
+- [Unraid installation and Community Applications template](UNRAID.md). Catalog submission/review is separate.
+- Docker image: `ghcr.io/minerport/vynodeplextv:0.9.1`. Use `docker compose -f compose.release.yaml up -d` after configuring `.env` from `.env.example`.
+- [Release notes and limitations](docs/RELEASE_NOTES.md). Licensed under [GPL-3.0](LICENSE).
 
 ## Your television
 
@@ -105,7 +112,7 @@ Tab / Shift+Tab and arrow keys move focus across the TV shell. Enter activates; 
 
 ## Unraid
 
-Build the image (`docker build -t afterglow-tv:local .`) on the Unraid host or transfer a built image with `docker save`/`docker load`. Add a container using that image, bridge networking, container port 8080, and a writable host path such as `/mnt/user/appdata/afterglow-tv` mapped to `/config`. The image runs as UID/GID 10001: grant that account write access to the directory. Set APP_ORIGIN to the browser-facing URL. No privileged access, GPU or host networking is required. Complete setup on a trusted network. Stop the container before backing up the whole config directory; retain a matching image/version for restore.
+Use the published image and template described in [UNRAID.md](UNRAID.md). For source development, build with `docker build -t afterglow-tv:local .`. Add a container using that image, bridge networking, container port 8080, and a writable host path such as `/mnt/user/appdata/afterglow-tv` mapped to `/config`. The image runs as UID/GID 10001: grant that account write access to the directory. Set APP_ORIGIN to the browser-facing URL. No privileged access, GPU or host networking is required. Complete setup on a trusted network. Stop the container before backing up the whole config directory; retain a matching image/version for restore.
 
 ## API and configuration
 
@@ -215,3 +222,43 @@ During playback, press **G** or choose **Mini-guide** to browse current/next cha
 Guide metadata works with Plex offline; uncached artwork and playback still need Plex. Window data refreshes every 30 seconds; the Now line advances locally from the server-time sample every second. Guide channel pages contain 50 channels (API maximum 100), with row virtualization and three-hour UI windows. The API permits up to 24 hours/10,000 programs per request; smaller windows are required for unusually dense short-clip schedules. Home/mini-guide Starting Soon data currently covers the first 100 channels; the full guide offers channel paging. Optional scheduled-program search and reminders are deferred.
 
 Migration 007 adds personal favorites, typed viewer preferences and playback origin. It preserves prior migrations, credentials, inventory and program rows. API additions are documented in OpenAPI; regenerate Phase 5 additions with `node scripts/update-guide-openapi.mjs`. Phase 6 broadcast presentation/interstitials is not implemented.
+
+## Standalone Android TV development
+
+The native Android application is being built as a self-contained alternative to
+Docker: Plex sign-in, inventory, channels and scheduling live on the device.
+It does not require an Afterglow server or use a WebView. See [ANDROID_TV.md](ANDROID_TV.md)
+for architecture, build/install instructions and honest validation status.
+
+### Appearance
+Settings → Appearance offers Tidal, Aurora, Ember, Glacier and OLED palettes,
+Cinematic/Compact layouts, and reduced-effects controls in web and Android TV.
+Choices are local to the browser/device, not shared account settings. Web honors
+system reduced-motion preferences; native focus animation and artwork fades can
+be disabled. Appearance never changes channel numbers or broadcast schedules.
+
+### Automatic library updates
+Selected libraries are checked incrementally every 15 minutes by default; custom
+refresh intervals remain configurable in Plex settings. The original six-hour
+default is upgraded to 15 minutes. Successful scans durably queue deduplicated
+schedule checks for enabled channels. Rules, collections, shows, and Recently
+Added channels resolve new membership locally. Static channels retain explicitly
+selected items. The scheduler preserves past/current entries and repairs future
+programming only when relevant inputs change. Failed scans never reconcile
+missing items or enqueue completion repairs. Existing five-minute scheduler
+maintenance remains a recovery backstop and handles Recently Added aging out.
+Docker monitors while running; Android checks while its local engine is alive
+and checks overdue work on startup. Android process death/device sleep can delay
+refresh; this is polling, not an always-on Android background service.
+
+Existing channels created by the old single-show template are upgraded to dedicated Show channels with Sequential scheduling. Their future schedule is repaired after the current entry; prior broadcasts remain unchanged. Sequential repair continues after the last preserved episode, including when membership changes. Mixed-show and Recently Added networks retain their configured distribution policies.
+
+Channel Studio on Android uses searchable 12-item, three-column choice pages. Creation includes content type, guide category, ordering, repeat window, optional year bounds and minimum rating. Existing channels can be renamed/renumbered, categorized, enabled/disabled and rescheduled from Edit; rule channels can be restricted to movies or episodes. Web smart templates expose the same optional filters and scheduling choices; the full web editor remains available for nested rules and artwork uploads.
+
+Guide categories respect explicit channel groups. Ungrouped channels with exclusively movie or episode programming also appear in Movies or TV; mixed networks remain in All unless a group is assigned. APK guide selection survives favorite changes and return navigation. Changing content repairs future programming without interrupting the current entry.
+
+### Plex sign-in connection discovery
+
+Choose **Sign in with Plex**, authorize on Plex, then choose a server. The default **Automatic secure connection** probes only HTTPS addresses advertised by that account, with at most four concurrent probes, six seconds per probe and a 22-second discovery budget. A remote route is tried early so stale LAN/container interfaces cannot consume the entire budget. The first verified reachable endpoint wins; both machine identity and library access must match. The whole connect operation is bounded to 27 seconds. No plaintext fallback is automatic.
+
+An explicit connection remains available for troubleshooting; HTTP is labeled unencrypted and should only be used on a trusted network. The strict `plex.direct` DNS fallback supports encoded IPv4 and IPv6 addresses while retaining the original hostname for TLS certificate verification. It never disables certificate checks. This cannot bypass a firewall, VPN routing policy, unavailable Plex server or disabled remote access. Automatic discovery runs from the Docker server or the standalone Android device, not the browser that approved sign-in. If the saved address later changes, sign in again to reconnect the existing server identity without replacing inventory. Linking remains short-lived; account authorization does not imply that every advertised server address is reachable.

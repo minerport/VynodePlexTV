@@ -1,7 +1,7 @@
 .guide-screen {
   --channel-width: 240px;
   padding: 24px 0;
-  color: #f5f1fb;
+  color: var(--text);
   min-width: 0;
 }
 .guide-heading {
@@ -27,21 +27,21 @@
 }
 .guide-toolbar button[aria-pressed="true"],
 .guide-days button[aria-pressed="true"] {
-  background: #d5b5f2;
-  color: #21182a;
+  background: var(--accent);
+  color: var(--bg);
 }
 .guide-toolbar span {
-  color: #bfb7cc;
+  color: var(--muted);
 }
 .guide-viewport {
   height: min(65vh, 800px);
   min-height: 320px;
   overflow: auto;
   position: relative;
-  border: 1px solid #514459;
+  border: 1px solid var(--line);
   border-radius: 18px;
-  background: #0d0c12;
-  scrollbar-color: #75647f #17141c;
+  background: var(--bg);
+  scrollbar-color: var(--muted) var(--bg);
   scroll-padding: 65px 20px 20px 250px;
 }
 .guide-canvas {
@@ -53,7 +53,7 @@
   z-index: 5;
   height: 60px;
   display: flex;
-  background: #24202c;
+  background: var(--surface);
 }
 .guide-corner {
   position: sticky;
@@ -61,9 +61,9 @@
   z-index: 7;
   width: var(--channel-width);
   flex-shrink: 0;
-  background: #24202c;
+  background: var(--surface);
   padding: 18px;
-  color: #cfc4dc;
+  color: var(--text);
   letter-spacing: 0.12em;
 }
 .guide-time {
@@ -75,7 +75,7 @@
   position: absolute;
   top: 18px;
   padding-left: 8px;
-  border-left: 1px solid #6c5e77;
+  border-left: 1px solid var(--line);
   white-space: nowrap;
 }
 .guide-row {
@@ -94,9 +94,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #211d28;
-  border-right: 1px solid #655171;
-  border-bottom: 1px solid #493c55;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .guide-channel img {
   width: 48px;
@@ -118,25 +118,25 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.guide-channel button {
+.guide-channel button:not(.guide-channel-tune) {
   width: 30px;
   padding: 4px;
   font-size: 0;
   border: 0;
   background: transparent;
 }
-.guide-channel button:before {
+.guide-channel button:not(.guide-channel-tune):before {
   content: "☆";
   font-size: 23px;
 }
-.guide-channel button[aria-pressed="true"]:before {
+.guide-channel button:not(.guide-channel-tune)[aria-pressed="true"]:before {
   content: "★";
-  color: #e8c9ff;
+  color: var(--accent);
 }
 .guide-track {
   position: relative;
   flex: 1;
-  border-bottom: 1px solid #493c55;
+  border-bottom: 1px solid var(--line);
 }
 .guide-program {
   position: absolute;
@@ -144,7 +144,7 @@
   height: 102px;
   min-width: 0;
   border: 0 !important;
-  box-shadow: inset 0 0 0 1px #695576;
+  box-shadow: inset 0 0 0 1px var(--line);
   border-radius: 8px;
   padding: 10px 12px;
   display: flex;
@@ -152,7 +152,7 @@
   align-items: flex-start;
   justify-content: center;
   gap: 4px;
-  background: #25202f;
+  background: var(--surface);
   text-align: left;
   overflow: hidden;
   box-sizing: border-box;
@@ -171,24 +171,24 @@
 }
 .guide-program span {
   font-size: 14px;
-  color: #d1c5dc;
+  color: var(--text);
 }
 .guide-program small {
   font-size: 12px;
-  color: #c1b4cc;
+  color: var(--muted);
 }
 .guide-program.past {
-  background: #17151e;
-  color: #c4bdcd;
+  background: var(--bg);
+  color: var(--muted);
 }
 .guide-program.current {
-  background: linear-gradient(130deg, #42314f, #272032);
+  background: linear-gradient(130deg, var(--surface-selected), var(--surface));
 }
 .guide-program:focus-visible {
-  outline: 4px solid #f1d7ff !important;
+  outline: 4px solid var(--accent) !important;
   outline-offset: -4px;
   z-index: 2;
-  background: #5a426c;
+  background: var(--surface-selected);
 }
 .guide-program progress {
   position: absolute;
@@ -198,20 +198,20 @@
   height: 4px;
 }
 .on-air {
-  color: #ecd0ff !important;
+  color: var(--accent) !important;
 }
 .now-line {
   position: absolute;
   top: 60px;
-  border-left: 2px solid #efb5ff;
+  border-left: 2px solid var(--accent);
   z-index: 2;
   pointer-events: none;
 }
 .now-label {
   position: absolute;
   top: 35px;
-  color: #25192b;
-  background: #efb5ff;
+  color: var(--bg);
+  background: var(--accent);
   font-size: 11px;
   padding: 2px 6px;
   transform: translateX(-50%);
@@ -220,20 +220,20 @@
 .guide-gap {
   display: block;
   padding: 35px;
-  color: #b5a9bd;
+  color: var(--muted);
 }
 .guide-empty {
   padding: 50px;
-  background: #211a2b;
+  background: var(--surface);
   border-radius: 20px;
 }
 .tv-dialog {
   position: fixed;
   inset: 4vh 4vw;
   z-index: 100;
-  background: rgba(20, 16, 27, 0.97);
+  background: var(--surface-overlay);
   backdrop-filter: blur(20px);
-  border: 1px solid #73617d;
+  border: 1px solid var(--line);
   border-radius: 24px;
   padding: 26px;
   overflow: auto;
@@ -270,7 +270,7 @@
 }
 .detail-content p {
   line-height: 1.6;
-  color: #d3cbdc;
+  color: var(--text);
 }
 .detail-poster {
   width: 100%;
@@ -296,7 +296,7 @@
   text-align: left;
   margin: 8px 0;
   padding: 18px;
-  background: #211b2d;
+  background: var(--surface);
 }
 .mini-guide img {
   width: 64px;
@@ -313,12 +313,12 @@
   flex: 1;
 }
 .mini-guide .mini-selected {
-  border-color: #d5b5f2;
+  border-color: var(--accent);
 }
 .player-guide {
   inset: 2vh 2vw;
   padding: 16px;
-  background: rgba(15, 11, 22, 0.95);
+  background: var(--surface-overlay);
 }
 .player-guide .guide-screen {
   padding: 0;
@@ -354,13 +354,13 @@
   min-width: 280px;
   max-width: 380px;
   padding: 20px;
-  background: #211b2c;
-  border: 1px solid #51405c;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 16px;
 }
 .tv-dialog button:focus-visible,
 .guide-screen button:focus-visible {
-  outline: 3px solid #efd9ff;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 @media (max-width: 700px) {
@@ -448,7 +448,7 @@
 .dialog-close {
   position: sticky;
   top: 0;
-  background: #261e30;
+  background: var(--surface-raised);
   z-index: 10;
 }
 .guide-program strong {
@@ -471,4 +471,210 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Broadcast guide: compact controls, readable channel identities, one shared time scale. */
+.guide-screen {
+  --channel-width: 220px;
+  padding: 8px 0;
+}
+.guide-heading h1 {
+  font-size: 1.65rem;
+  margin: 0;
+}
+.guide-heading .eyebrow {
+  display: none;
+}
+.guide-heading p {
+  margin: 4px 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.guide-heading {
+  margin-bottom: 12px;
+}
+.guide-screen button {
+  min-height: 36px;
+}
+.guide-preview {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 118px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--accent) 10%, var(--surface)),
+    var(--surface)
+  );
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.guide-preview img {
+  width: 150px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 7px;
+}
+.guide-preview > div {
+  flex: 1;
+  min-width: 0;
+}
+.guide-preview h2 {
+  margin: 6px 0;
+  font-size: 1.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.guide-preview p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.guide-preview .eyebrow {
+  font-size: 0.7rem;
+}
+.guide-toolbar,
+.guide-days {
+  gap: 6px;
+  padding: 6px 0;
+  scrollbar-width: thin;
+}
+.guide-toolbar button,
+.guide-days button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.guide-days {
+  margin: 4px 0;
+  scrollbar-color: var(--line) transparent;
+}
+.guide-toolbar span {
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+.guide-viewport {
+  height: clamp(340px, 53vh, 720px);
+  border-radius: 10px;
+  border-color: var(--line);
+  scroll-padding-left: var(--channel-width);
+}
+.guide-canvas {
+  min-width: 900px;
+}
+.guide-channel {
+  gap: 10px;
+  padding: 10px;
+  border-color: var(--line);
+}
+.guide-channel img {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.guide-channel .guide-channel-tune {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.guide-channel .guide-channel-tune:before {
+  content: none;
+}
+.guide-channel-tune strong {
+  font-size: 14px;
+  color: var(--accent);
+}
+.guide-channel-tune span {
+  font-size: 13px;
+  white-space: normal;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.guide-channel button:not(.guide-channel-tune) {
+  flex: 0 0 24px;
+  width: 24px;
+}
+.guide-program {
+  top: 3px;
+  height: 78px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 8px 12px;
+  gap: 3px;
+}
+.guide-program strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.guide-program span {
+  font-size: 12px;
+}
+.guide-program small {
+  font-size: 11px;
+}
+.guide-program .on-air {
+  display: none;
+}
+.guide-screen .guide-program.current {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.guide-screen .guide-program:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -2px;
+  transform: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.guide-track {
+  border-color: var(--line);
+}
+.guide-header,
+.guide-time {
+  height: 60px;
+}
+.guide-time > span {
+  font-size: 12px;
+}
+.now-line {
+  border-color: var(--accent);
+  opacity: 0.8;
+}
+.now-label {
+  background: var(--accent);
+}
+@media (max-width: 700px) {
+  .guide-screen {
+    --channel-width: 160px;
+  }
+  .guide-preview {
+    padding: 12px;
+    gap: 12px;
+  }
+  .guide-preview img {
+    width: 90px;
+    height: 65px;
+  }
+  .guide-preview h2 {
+    font-size: 1.1rem;
+  }
+  .guide-preview > button {
+    display: none;
+  }
+  .guide-canvas {
+    min-width: 780px;
+  }
+  .guide-channel img {
+    width: 30px;
+    height: 35px;
+  }
+  .guide-channel {
+    gap: 6px;
+    padding: 6px;
+  }
 }

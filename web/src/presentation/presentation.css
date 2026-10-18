@@ -30,11 +30,15 @@
   left: 5%;
   right: 5%;
   pointer-events: none;
-  background: linear-gradient(120deg, #171123ed, #392349e8);
-  border: 1px solid #9677a5;
+  background: linear-gradient(
+    120deg,
+    var(--surface-glass),
+    var(--surface-overlay)
+  );
+  border: 1px solid var(--line);
   border-radius: 20px;
   padding: clamp(18px, 3vw, 48px);
-  color: #f4e7ff;
+  color: var(--text);
 }
 .coming-next {
   top: 7%;
@@ -56,7 +60,7 @@
 .coming-next p,
 .station-break > p:first-child {
   letter-spacing: 0.18em;
-  color: #dabbea;
+  color: var(--accent);
 }
 .presentation-admin {
   max-width: 1300px;
@@ -65,8 +69,8 @@
 .presentation-admin section {
   margin: 24px 0;
   padding: 24px;
-  background: #21192bbd;
-  border: 1px solid #52405f;
+  background: var(--surface-overlay);
+  border: 1px solid var(--line);
   border-radius: 20px;
 }
 .presentation-fields {
@@ -82,9 +86,9 @@
 .presentation-admin input,
 .presentation-admin select {
   padding: 12px;
-  background: #15121c;
+  background: var(--surface-input);
   color: white;
-  border: 1px solid #675078;
+  border: 1px solid var(--line);
   border-radius: 10px;
 }
 .presentation-assets {
@@ -93,7 +97,7 @@
   gap: 18px;
 }
 .presentation-asset {
-  border: 1px solid #655071;
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px;
 }
@@ -106,23 +110,31 @@
   object-fit: cover;
   border-radius: 10px;
   margin-bottom: 14px;
-  background: #0d0a13;
+  background: var(--bg);
 }
 .metadata-thumbnail {
   display: grid;
   place-items: center;
-  background: radial-gradient(ellipse at center, #674875, #16121b);
+  background: radial-gradient(
+    ellipse at center,
+    var(--surface-selected),
+    var(--surface)
+  );
   letter-spacing: 0.12em;
 }
 .presentation-drop {
-  border: 2px dashed #9c7eb4;
+  border: 2px dashed var(--accent);
   padding: 24px;
   border-radius: 16px;
 }
 .branding-preview {
   position: relative;
   aspect-ratio: 16/9;
-  background: radial-gradient(ellipse at center, #674875, #16121b);
+  background: radial-gradient(
+    ellipse at center,
+    var(--surface-selected),
+    var(--surface)
+  );
   overflow: hidden;
   border-radius: 16px;
 }
@@ -135,5 +147,5 @@
 }
 .presentation-admin .rule-row {
   padding: 16px 0;
-  border-bottom: 1px solid #52405f;
+  border-bottom: 1px solid var(--line);
 }

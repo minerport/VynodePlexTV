@@ -5694,6 +5694,30 @@ components:
             - ""
             - movie
             - episode
+        groupId:
+          type: string
+          description: Optional guide group. Omit for automatic Movies or TV grouping; empty means ungrouped.
+        scheduleMode:
+          type: string
+          enum: ["", SEQUENTIAL, RANDOM, SMART_RANDOM]
+        repeatDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+        futureDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+        yearFrom:
+          type: integer
+          description: Optional lower year bound; zero means no lower bound. Not used for dedicated Show sources.
+        yearTo:
+          type: integer
+          description: Optional upper year bound; zero means no upper bound. Not used for dedicated Show sources.
+        minimumRating:
+          type: number
+          minimum: 0
+          maximum: 10
         decade:
           type: integer
         startDate:

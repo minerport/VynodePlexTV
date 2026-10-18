@@ -201,5 +201,17 @@ func (s *Service) syncLibrary(ctx context.Context, j Job) error {
 	if _, err = tx.ExecContext(ctx, "DELETE FROM sync_seen WHERE job_id=?", j.ID); err != nil {
 		return err
 	}
+	// Commit a durable, deduplicated schedule check with the authoritative scan.
+	// The scheduler resolves local membership and leaves unaffected timelines intact.
+	// Broad rules may span libraries, so check every enabled channel rather than
+	// guessing dependencies from rule JSON. Existing active jobs/periodic maintenance
+	// also re-resolve membership, protecting changes arriving during a running job.
+	if _, err = tx.ExecContext(ctx, `INSERT INTO jobs(id,type,channel_id,mode,status,created_at)
+ SELECT lower(hex(randomblob(16))),'SCHEDULE_REPAIR',c.id,'','QUEUED',?
+ FROM channels c JOIN channel_schedule_settings ss ON ss.channel_id=c.id
+ WHERE c.enabled=1 AND ss.enabled=1 AND NOT EXISTS (
+ SELECT 1 FROM jobs j WHERE j.channel_id=c.id AND j.type LIKE 'SCHEDULE_%' AND j.status IN('QUEUED','RUNNING'))`, now()); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

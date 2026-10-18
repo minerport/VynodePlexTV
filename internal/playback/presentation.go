@@ -84,6 +84,9 @@ func (s *Service) Advance(ctx context.Context, user, auth, id string, fallback b
 	defer v.transition.Unlock()
 	v.mu.Lock()
 	r := TuneRequest{ChannelID: v.tune.Channel.ID, Mode: "LIVE", ClientID: v.client, Capabilities: v.caps, ReplaceSession: id, continuation: true, presentationFallback: fallback}
+	r.Capabilities.VersionID = ""
+	r.Capabilities.AudioStreamID = ""
+	r.Capabilities.SubtitleStreamID = ""
 	v.mu.Unlock()
 	return s.Tune(ctx, user, auth, r)
 }

@@ -17,9 +17,9 @@
 .personal-toolbar select {
   margin-left: 1rem;
   padding: 0.8rem;
-  background: #191725;
+  background: var(--surface-input);
   color: inherit;
-  border: 1px solid #615574;
+  border: 1px solid var(--line);
   border-radius: 0.7rem;
 }
 .personal-channel-list {
@@ -34,7 +34,7 @@
   align-items: center;
   flex-wrap: wrap;
   background: linear-gradient(115deg, #242031d9, #13131bd9);
-  border: 1px solid #71618155;
+  border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1.25rem;
   backdrop-filter: blur(12px);
@@ -48,20 +48,20 @@
 }
 .personal-channel-list small {
   display: block;
-  color: #bcb5ca;
+  color: var(--muted);
   margin-top: 0.5rem;
 }
 .my-channels button {
   padding: 0.75rem 1rem;
   border-radius: 0.7rem;
-  border: 1px solid #76648d66;
-  background: #30263c;
-  color: #f5edf9;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
   min-height: 46px;
 }
 .my-channels button:focus-visible,
 .my-channels select:focus-visible {
-  outline: 3px solid #dcc0ff;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 .my-channels button:disabled {
@@ -83,8 +83,8 @@
   display: grid;
   gap: 1rem;
   padding: 1.5rem;
-  border: 1px solid #71618155;
-  background: #1b1824b0;
+  border: 1px solid var(--line);
+  background: var(--surface-overlay);
   border-radius: 1rem;
 }
 .my-channels form label {
@@ -95,7 +95,7 @@
 .my-channels form select {
   padding: 0.85rem;
   color: inherit;
-  background: #15131e;
-  border: 1px solid #76648d66;
+  background: var(--surface-input);
+  border: 1px solid var(--line);
   border-radius: 0.6rem;
 }

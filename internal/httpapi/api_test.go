@@ -171,3 +171,57 @@ func TestRateLimitAndRequestValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestTemplateCustomizationPersists(t *testing.T) {
+	dir := t.TempDir()
+	db, e := database.Open(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	origin := "http://localhost:8080"
+	a := New(db, config.Config{Origin: origin, Dir: dir, WebDir: t.TempDir()}, slog.New(slog.NewTextHandler(io.Discard, nil)), "test")
+	h := a.Handler()
+	var cookie *http.Cookie
+	var csrf string
+	call := func(path, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", path, bytes.NewBufferString(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", origin)
+		r.Header.Set("X-CSRF-Token", csrf)
+		if cookie != nil {
+			r.AddCookie(cookie)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	creds := `{"username":"owner","password":"synthetic-test-password"}`
+	if w := call("/api/v1/auth/setup", creds); w.Code != 201 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	w := call("/api/v1/auth/login", creds)
+	if w.Code != 200 {
+		t.Fatal(w.Code)
+	}
+	var session Session
+	if e = json.Unmarshal(w.Body.Bytes(), &session); e != nil {
+		t.Fatal(e)
+	}
+	cookie = w.Result().Cookies()[0]
+	csrf = session.CSRF
+	w = call("/api/v1/smart-channel-templates/instantiate", `{"template":"decade","decade":1990,"name":"Fixture Movies","mediaType":"movie","scheduleMode":"SEQUENTIAL","repeatDays":7,"futureDays":10,"minimumRating":7}`)
+	if w.Code != 201 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	var group, mode string
+	var repeat, horizon int
+	e = db.QueryRow(`SELECT c.group_id,s.mode,s.movie_repeat_days,s.future_days FROM channels c JOIN channel_schedule_settings s ON s.channel_id=c.id WHERE c.name='Fixture Movies'`).Scan(&group, &mode, &repeat, &horizon)
+	if e != nil || group != "movies" || mode != "SEQUENTIAL" || repeat != 7 || horizon != 10 {
+		t.Fatal(group, mode, repeat, horizon, e)
+	}
+	w = call("/api/v1/smart-channel-templates/instantiate", `{"template":"decade","decade":1990,"name":"Invalid","scheduleMode":"UNKNOWN"}`)
+	if w.Code != 422 {
+		t.Fatal("invalid options accepted", w.Code)
+	}
+}

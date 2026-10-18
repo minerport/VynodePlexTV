@@ -154,8 +154,19 @@ func (s *Service) Window(ctx context.Context, user string, q Query) (Window, err
 	filter += ` AND (NOT EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id) OR EXISTS(SELECT 1 FROM channel_activation_windows aw WHERE aw.channel_id=c.id AND aw.start_ms<=? AND aw.end_ms>?) OR EXISTS(SELECT 1 FROM channel_programs p WHERE p.channel_id=c.id AND p.start_time_utc<=? AND p.end_time_utc>?))`
 	args = append(args, now, now, now, now)
 	if q.Group != "" {
-		filter += " AND c.group_id=?"
-		args = append(args, q.Group)
+		if q.Group == "movies" || q.Group == "tv" {
+			kind := "movie"
+			if q.Group == "tv" {
+				kind = "episode"
+			}
+			// Legacy templates had no group. Classify their persisted programming,
+			// while preserving explicit custom group assignments and mixed networks.
+			filter += ` AND (c.group_id=? OR (c.group_id IS NULL AND EXISTS(SELECT 1 FROM channel_programs p JOIN plex_media_items m ON m.id=p.media_item_id WHERE p.channel_id=c.id AND m.media_type=?) AND NOT EXISTS(SELECT 1 FROM channel_programs p JOIN plex_media_items m ON m.id=p.media_item_id WHERE p.channel_id=c.id AND m.media_type<>?)))`
+			args = append(args, q.Group, kind, kind)
+		} else {
+			filter += " AND c.group_id=?"
+			args = append(args, q.Group)
+		}
 	}
 	if q.Favorites {
 		filter += " AND f.user_id IS NOT NULL"

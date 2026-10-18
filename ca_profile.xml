@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>Afterglow TV: standalone Plex-powered linear television, with Docker and native Android TV editions. Maintained in minerport/VynodePlexTV. Report problems through GitHub Issues. Docker and APK inventories are independent.</Profile>
+  <Icon>https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.svg</Icon>
+  <WebPage>https://github.com/minerport/VynodePlexTV</WebPage>
+</CommunityApplications>

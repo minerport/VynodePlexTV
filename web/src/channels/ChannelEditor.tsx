@@ -109,7 +109,7 @@ export function ChannelEditor({
         <div className="channel-editor-layout">
           <div className="channel-editor-fields">
             <section className="channel-panel">
-              <h2>Channel identity</h2>
+              <h2>1. Name your channel</h2>
               <div className="channel-filters">
                 <label>
                   Channel number
@@ -153,51 +153,55 @@ export function ChannelEditor({
                   </select>
                 </label>
               </div>
-              <label>
-                Description
-                <textarea
-                  maxLength={2000}
-                  value={draft.description}
-                  onChange={(e) => patch({ description: e.target.value })}
-                />
-              </label>
-              <div className="channel-filters">
+              <details className="channel-advanced">
+                <summary>Advanced identity & visibility</summary>
                 <label>
-                  Visibility
-                  <select
-                    value={draft.visibility}
-                    onChange={(e) =>
-                      patch({
-                        visibility: e.target.value as Definition["visibility"],
-                      })
-                    }
-                  >
-                    <option value="VISIBLE">Visible</option>
-                    <option value="HIDDEN">Hidden</option>
-                  </select>
-                </label>
-                <label>
-                  Display order
-                  <input
-                    type="number"
-                    value={draft.sortOrder}
-                    onChange={(e) =>
-                      patch({ sortOrder: Number(e.target.value) })
-                    }
+                  Description
+                  <textarea
+                    maxLength={2000}
+                    value={draft.description}
+                    onChange={(e) => patch({ description: e.target.value })}
                   />
                 </label>
-                <label className="check-label">
-                  <input
-                    type="checkbox"
-                    checked={draft.enabled}
-                    onChange={(e) => patch({ enabled: e.target.checked })}
-                  />
-                  Enabled
-                </label>
-              </div>
+                <div className="channel-filters">
+                  <label>
+                    Visibility
+                    <select
+                      value={draft.visibility}
+                      onChange={(e) =>
+                        patch({
+                          visibility: e.target
+                            .value as Definition["visibility"],
+                        })
+                      }
+                    >
+                      <option value="VISIBLE">Visible</option>
+                      <option value="HIDDEN">Hidden</option>
+                    </select>
+                  </label>
+                  <label>
+                    Display order
+                    <input
+                      type="number"
+                      value={draft.sortOrder}
+                      onChange={(e) =>
+                        patch({ sortOrder: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label className="check-label">
+                    <input
+                      type="checkbox"
+                      checked={draft.enabled}
+                      onChange={(e) => patch({ enabled: e.target.checked })}
+                    />
+                    Enabled
+                  </label>
+                </div>
+              </details>
             </section>
             <section className="channel-panel">
-              <h2>Content source</h2>
+              <h2>2. Choose what plays</h2>
               <label>
                 Channel type
                 <select
@@ -383,8 +387,12 @@ export function ChannelEditor({
                 />
               )}
             </section>
-            <section className="channel-panel">
-              <h2>Artwork & atmosphere</h2>
+            <details className="channel-panel channel-advanced">
+              <summary>3. Customize artwork & atmosphere</summary>
+              <p>
+                Automatic artwork is ready to use. Open these controls to make
+                it your own.
+              </p>
               {(["logo", "background"] as const).map((kind) => (
                 <div key={kind}>
                   <label>
@@ -456,7 +464,7 @@ export function ChannelEditor({
                   )}
                 </>
               )}
-            </section>
+            </details>
           </div>
           <aside>
             <div className="channel-identity-preview">

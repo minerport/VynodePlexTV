@@ -3,6 +3,7 @@ package httpapi
 import (
 	"afterglow.local/tv/internal/channels"
 	"afterglow.local/tv/internal/playback"
+	"afterglow.local/tv/internal/plex"
 	"errors"
 	"io"
 	"net/http"
@@ -43,6 +44,29 @@ func authHash(r *http.Request) string {
 	return digest(c.Value)
 }
 func (a *API) playbackRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/playback/{id}/options", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
+		v, e := a.playback.Options(r.Context(), s.User.ID, r.PathValue("id"))
+		if e != nil {
+			a.playbackError(w, e)
+			return
+		}
+		reply(w, 200, map[string]any{"versions": v})
+	}))
+	mux.HandleFunc("POST /api/v1/playback/{id}/options", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
+		var b struct {
+			Capabilities plex.Capabilities `json:"capabilities"`
+			Position     int64             `json:"positionMs"`
+		}
+		if !decodeChannel(w, r, &b) {
+			return
+		}
+		v, e := a.playback.Reconfigure(r.Context(), s.User.ID, authHash(r), r.PathValue("id"), b.Capabilities, b.Position)
+		if e != nil {
+			a.playbackError(w, e)
+			return
+		}
+		reply(w, 200, v)
+	}))
 	mux.HandleFunc("GET /api/v1/on-now", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
 		v, e := a.playback.OnNow(r.Context(), s.User.ID)
 		if e != nil {

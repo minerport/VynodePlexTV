@@ -42,3 +42,37 @@ func TestSeasonalTimezoneBounds(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestShowTemplateUsesSequentialShowSource(t *testing.T) {
+	source, err := TemplateSource(TemplateInput{Template: "comfort", Selection: "local-show"})
+	if err != nil || source.Type != "SHOW" || source.Rule != nil || source.Show == nil || source.Show.ShowID != "local-show" || source.Show.EpisodeScope != "ALL" {
+		t.Fatalf("invalid show source: %+v %v", source, err)
+	}
+	if _, err = TemplateSource(TemplateInput{Template: "comfort", Selection: "local-show", MediaType: "movie"}); err != ErrInvalid {
+		t.Fatal("movie-only show accepted")
+	}
+}
+
+func TestCustomTemplateFiltersCompile(t *testing.T) {
+	s := personalFixture(t)
+	v := TemplateInput{Template: "genre", Selection: "1", MediaType: "movie", YearFrom: 1990, YearTo: 1999, MinimumRating: 7, ScheduleMode: "SEQUENTIAL"}
+	source, e := TemplateSource(v)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(source.Rule.Root.Children) != 6 {
+		t.Fatal(source)
+	}
+	if _, e = (channels.RuleCompiler{DB: s.db}).Compile(context.Background(), *source.Rule); e != nil {
+		t.Fatal(e)
+	}
+	v.YearFrom = 2000
+	if _, e = TemplateSource(v); e != ErrInvalid {
+		t.Fatal("reversed range accepted")
+	}
+	v.YearFrom = 1990
+	v.ScheduleMode = "bad"
+	if _, e = TemplateSource(v); e != ErrInvalid {
+		t.Fatal("invalid mode accepted")
+	}
+}

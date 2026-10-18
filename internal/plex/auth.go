@@ -169,12 +169,16 @@ func (s *Service) PollLink(ctx context.Context, id, userID string) (LinkStatus, 
 			continue
 		}
 		valid := []LinkConnection{}
+		seen := map[string]bool{}
 		for _, connection := range resource.Connections {
 			base, err := NormalizeURL(connection.URI)
-			if err != nil {
+			if err != nil || seen[base] {
 				continue
 			}
+			seen[base] = true
 			connection.URI = base
+			parsed, _ := url.Parse(base)
+			connection.Protocol = parsed.Scheme
 			valid = append(valid, connection)
 		}
 		sort.SliceStable(valid, func(i, j int) bool { return connectionRank(valid[i]) < connectionRank(valid[j]) })
@@ -215,6 +219,8 @@ func (s *Service) CancelLink(id, userID string) error {
 	return failure("NOT_FOUND", "Plex sign-in is no longer active")
 }
 func (s *Service) ConnectLinkedServer(ctx context.Context, id, userID, resourceID, uri string) (Server, error) {
+	ctx, cancel := context.WithTimeout(ctx, 27*time.Second)
+	defer cancel()
 	s.linkMu.Lock()
 	s.pruneLinksLocked()
 	state := s.links[id]
@@ -230,7 +236,7 @@ func (s *Service) ConnectLinkedServer(ctx context.Context, id, userID, resourceI
 			break
 		}
 	}
-	valid := false
+	valid := selected != nil && uri == ""
 	if selected != nil {
 		for _, c := range selected.Connections {
 			if c.URI == uri {
@@ -241,6 +247,13 @@ func (s *Service) ConnectLinkedServer(ctx context.Context, id, userID, resourceI
 	s.linkMu.Unlock()
 	if !valid {
 		return Server{}, failure("INVALID", "Choose one of the connections returned by Plex")
+	}
+	if uri == "" {
+		var err error
+		uri, err = s.findSecureConnection(ctx, *selected)
+		if err != nil {
+			return Server{}, err
+		}
 	}
 	connection := Connection{BaseURL: uri, Token: selected.AccessToken, Name: selected.Name}
 	identity, err := s.TestConnection(ctx, connection)

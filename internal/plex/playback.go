@@ -17,19 +17,28 @@ import (
 
 // Capabilities describe formats actually reported by the client, not formats in the library.
 type Capabilities struct {
-	ClientType     string   `json:"clientType"`
-	Containers     []string `json:"containers"`
-	VideoCodecs    []string `json:"videoCodecs"`
-	AudioCodecs    []string `json:"audioCodecs"`
-	MaxHeight      int      `json:"maxHeight"`
-	HLS            bool     `json:"hls"`
-	ForceTranscode bool     `json:"forceTranscode"`
+	VideoMaxHeights  map[string]int `json:"videoMaxHeights,omitempty"`
+	ClientType       string         `json:"clientType"`
+	Containers       []string       `json:"containers"`
+	VideoCodecs      []string       `json:"videoCodecs"`
+	AudioCodecs      []string       `json:"audioCodecs"`
+	MaxHeight        int            `json:"maxHeight"`
+	HLS              bool           `json:"hls"`
+	ForceTranscode   bool           `json:"forceTranscode"`
+	HDRFormats       []string       `json:"hdrFormats"`
+	SubtitleFormats  []string       `json:"subtitleFormats"`
+	AudioPassthrough []string       `json:"audioPassthrough"`
+	Quality          string         `json:"quality"`
+	VersionID        string         `json:"versionId"`
+	AudioStreamID    string         `json:"audioStreamId"`
+	SubtitleStreamID string         `json:"subtitleStreamId"`
 }
 type PlaybackSource interface {
 	Fetch(context.Context, string, string) (*http.Response, error)
 	Close(context.Context) error
 }
 type PlaybackResolution struct {
+	Version  *MediaVersion
 	Source   PlaybackSource
 	Mode     string
 	Mime     string
@@ -70,7 +79,47 @@ func contains(v []string, s string) bool {
 	return false
 }
 func DirectCompatible(v MediaVersion, c Capabilities) bool {
-	return !c.ForceTranscode && v.PartCount == 1 && v.Container == "mp4" && v.VideoCodec == "h264" && contains(c.Containers, "mp4") && contains(c.VideoCodecs, "h264") && contains(c.AudioCodecs, v.AudioCodec) && (c.MaxHeight <= 0 || v.Height != nil && *v.Height <= c.MaxHeight)
+	if limit, known := c.VideoMaxHeights[v.VideoCodec]; known && (v.Height == nil || *v.Height > limit) {
+		return false
+	}
+	containerOK := v.Container == "mp4" && v.VideoCodec == "h264"
+	if c.ClientType == "android-tv" {
+		containerOK = contains([]string{"mp4", "mkv", "webm", "mpegts"}, v.Container)
+	}
+	audio := v.AudioCodec
+	for _, s := range v.Streams {
+		if s.ID == c.AudioStreamID && s.Type != nil && *s.Type == 2 {
+			audio = s.Codec
+		}
+	}
+	// Browser track changes and subtitle burn-in require a Plex session; native direct play selects embedded tracks.
+	tracksOK := c.AudioStreamID == "" && (c.SubtitleStreamID == "" || c.SubtitleStreamID == "off")
+	if c.SubtitleStreamID != "" && c.SubtitleStreamID != "off" {
+		for _, s := range v.Streams {
+			if s.ID == c.SubtitleStreamID && !contains(c.SubtitleFormats, s.Codec) {
+				tracksOK = false
+			}
+		}
+	}
+	return !c.ForceTranscode && tracksOK && v.PartCount == 1 && containerOK && contains(c.Containers, v.Container) && contains(c.VideoCodecs, v.VideoCodec) && (contains(c.AudioCodecs, audio) || contains(c.AudioPassthrough, audio)) && (v.HDR == "" || contains(c.HDRFormats, v.HDR)) && ((c.MaxHeight <= 0 && c.Quality == "") || v.Height != nil && *v.Height <= qualityHeight(c))
+}
+func qualityHeight(c Capabilities) int {
+	h := c.MaxHeight
+	if h <= 0 {
+		h = 1080
+	}
+	h = min(h, 4320)
+	switch c.Quality {
+	case "480p":
+		h = min(h, 480)
+	case "720p":
+		h = min(h, 720)
+	case "1080p":
+		h = min(h, 1080)
+	case "4K":
+		h = min(h, 2160)
+	}
+	return h
 }
 func (s *Service) ResolvePlayback(ctx context.Context, id string, caps Capabilities, session string) (PlaybackResolution, error) {
 	local, e := s.Item(ctx, id)
@@ -102,6 +151,9 @@ func (s *Service) resolveMedia(ctx context.Context, local MediaItem, caps Capabi
 	direct := false
 	for i := range live.Versions {
 		v := &live.Versions[i]
+		if caps.VersionID != "" && v.MediaID != caps.VersionID {
+			continue
+		}
 		if v.PartCount != 1 {
 			continue
 		}
@@ -120,9 +172,35 @@ func (s *Service) resolveMedia(ctx context.Context, local MediaItem, caps Capabi
 		return PlaybackResolution{}, failure("UNSUPPORTED", "No supported single-part version is available")
 	}
 	v := *selected
+	for _, selection := range []struct {
+		id   string
+		kind int
+	}{{caps.AudioStreamID, 2}, {caps.SubtitleStreamID, 3}} {
+		if selection.id == "" || selection.id == "off" {
+			continue
+		}
+		found := false
+		for _, stream := range v.Streams {
+			if stream.ID == selection.id && stream.Type != nil && *stream.Type == selection.kind {
+				found = true
+			}
+		}
+		if !found {
+			return PlaybackResolution{}, failure("INVALID", "Selected track is no longer available")
+		}
+	}
 	source := &streamSource{client: client, session: session, prefix: "/api/v1/playback/" + session + "/stream/", resources: map[string]string{}}
 	mode, mime := "DIRECT_PLAY", "video/mp4"
 	if direct {
+		if v.Container == "mkv" {
+			mime = "video/x-matroska"
+		}
+		if v.Container == "webm" {
+			mime = "video/webm"
+		}
+		if v.Container == "mpegts" {
+			mime = "video/mp2t"
+		}
 		if !safeArtworkPath(v.PartKey) || !strings.HasPrefix(v.PartKey, "/library/parts/") {
 			return PlaybackResolution{}, failure("RESPONSE", "Plex media location is invalid")
 		}
@@ -135,6 +213,29 @@ func (s *Service) resolveMedia(ctx context.Context, local MediaItem, caps Capabi
 		mode = "PLEX_HLS"
 		mime = "application/vnd.apple.mpegurl"
 		q := url.Values{"path": {"/library/metadata/" + local.RatingKey}, "mediaIndex": {strconv.Itoa(v.MediaIndex)}, "partIndex": {"0"}, "protocol": {"hls"}, "offset": {"0"}, "fastSeek": {"1"}, "directPlay": {"0"}, "directStream": {"1"}, "directStreamAudio": {"1"}, "videoQuality": {"100"}, "videoResolution": {"1920x1080"}, "maxVideoBitrate": {"12000"}, "audioBoost": {"100"}, "subtitleSize": {"100"}, "subtitles": {"none"}, "session": {session}, "X-Plex-Client-Profile-Name": {"Chrome"}}
+		h := qualityHeight(caps)
+		width, bitrate := 1920, 12000
+		switch {
+		case h <= 480:
+			width, bitrate = 854, 2000
+		case h <= 720:
+			width, bitrate = 1280, 4000
+		case h > 1080:
+			width, bitrate = 3840, 40000
+		}
+		q.Set("videoResolution", fmt.Sprintf("%dx%d", width, h))
+		q.Set("maxVideoBitrate", strconv.Itoa(bitrate))
+		if v.Height != nil && *v.Height > h || v.HDR != "" && !contains(caps.HDRFormats, v.HDR) {
+			q.Set("directStream", "0")
+		}
+		if caps.AudioStreamID != "" {
+			q.Set("audioStreamID", caps.AudioStreamID)
+		}
+		if caps.SubtitleStreamID != "" && caps.SubtitleStreamID != "off" {
+			q.Set("subtitleStreamID", caps.SubtitleStreamID)
+			q.Set("subtitles", "burn")
+			q.Set("directStream", "0")
+		}
 		if caps.ForceTranscode {
 			q.Set("directStream", "0")
 		}
@@ -188,7 +289,7 @@ func (s *Service) resolveMedia(ctx context.Context, local MediaItem, caps Capabi
 		}
 	}
 	source.resources["main"] = source.root
-	return PlaybackResolution{Source: source, Mode: mode, Mime: mime, Duration: *live.DurationMS, ServerID: local.ServerID, AddedAt: local.AddedAt}, nil
+	return PlaybackResolution{Version: &v, Source: source, Mode: mode, Mime: mime, Duration: *live.DurationMS, ServerID: local.ServerID, AddedAt: local.AddedAt}, nil
 }
 
 var playlistURI = regexp.MustCompile(`URI="([^"]+)"`)

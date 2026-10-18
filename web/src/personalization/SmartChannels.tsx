@@ -16,6 +16,13 @@ export function SmartChannels({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const [groupId, setGroupId] = useState("auto");
+  const [customMode, setCustomMode] = useState("");
+  const [repeatDays, setRepeatDays] = useState(30);
+  const [yearFrom, setYearFrom] = useState("");
+  const [yearTo, setYearTo] = useState("");
+  const [minimumRating, setMinimumRating] = useState(0);
   const [templates, setTemplates] = useState<Template[]>([]),
     [selected, setSelected] = useState<Template | null>(null),
     [options, setOptions] = useState<Option[]>([]),
@@ -28,6 +35,7 @@ export function SmartChannels({
     [start, setStart] = useState(""),
     [end, setEnd] = useState(""),
     [zone, setZone] = useState("America/New_York"),
+    [scheduleMode, setScheduleMode] = useState("SMART_RANDOM"),
     [preview, setPreview] = useState<{
       count: number;
       items: { id: string; title: string }[];
@@ -35,6 +43,9 @@ export function SmartChannels({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {
+    void request<{ id: string; name: string }[]>("/channel-groups")
+      .then((v) => setGroups(Array.isArray(v) ? v : []))
+      .catch((e) => setError(e.message));
     void request<{ items: Template[] }>("/smart-channel-templates")
       .then((v) => setTemplates(v.items))
       .catch((e) => setError(e.message));
@@ -67,6 +78,12 @@ export function SmartChannels({
     number,
     decade,
     mediaType,
+    ...(groupId === "auto" ? {} : { groupId }),
+    scheduleMode: customMode,
+    repeatDays,
+    ...(selected?.id === "comfort"
+      ? {}
+      : { yearFrom: Number(yearFrom), yearTo: Number(yearTo), minimumRating }),
     startDate: start,
     endDate: end,
     timezone: zone,
@@ -85,9 +102,11 @@ export function SmartChannels({
         onCreated();
       } else {
         const v = await request<{
+          scheduleMode: string;
           preview: { count: number; items: { id: string; title: string }[] };
         }>("/smart-channel-templates/preview", "POST", body, csrf);
         setPreview(v.preview);
+        setScheduleMode(v.scheduleMode);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to create channel");
@@ -204,6 +223,81 @@ export function SmartChannels({
               <option value="episode">Episodes</option>
             </select>
           </label>
+          <details className="channel-advanced">
+            <summary>Customize programming & guide category</summary>
+            <label>
+              Guide category
+              <select
+                value={groupId}
+                onChange={(e) => setGroupId(e.target.value)}
+              >
+                <option value="auto">Automatic from content</option>
+                <option value="">Ungrouped</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Programming order
+              <select
+                value={customMode}
+                onChange={(e) => setCustomMode(e.target.value)}
+              >
+                <option value="">Recommended</option>
+                <option value="SEQUENTIAL">Sequential / episode order</option>
+                <option value="SMART_RANDOM">Smart random</option>
+                <option value="RANDOM">Random</option>
+              </select>
+            </label>
+            <label>
+              Repeat window (days)
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={repeatDays}
+                onChange={(e) => setRepeatDays(Number(e.target.value))}
+              />
+            </label>
+            {selected.id !== "comfort" && (
+              <>
+                <label>
+                  Released from year
+                  <input
+                    type="number"
+                    min="1880"
+                    max="2100"
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Released through year
+                  <input
+                    type="number"
+                    min="1880"
+                    max="2100"
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Minimum rating
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={minimumRating}
+                    onChange={(e) => setMinimumRating(Number(e.target.value))}
+                  />
+                </label>
+              </>
+            )}
+          </details>
           {selected.id === "seasonal" && (
             <>
               <label>
@@ -247,8 +341,12 @@ export function SmartChannels({
         <div>
           <h2>{preview.count} matching items</h2>
           <p>
-            Smart Random · Existing presentation defaults · Editable after
-            creation
+            {scheduleMode === "SEQUENTIAL"
+              ? "Season & episode order"
+              : scheduleMode === "RANDOM"
+                ? "Random"
+                : "Smart Random"}{" "}
+            · Existing presentation defaults · Editable after creation
           </p>
           <ul>
             {preview.items.map((m) => (

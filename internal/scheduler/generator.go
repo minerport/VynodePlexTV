@@ -46,6 +46,17 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 		})
 	}
 	previous := r.Previous
+	// Continue after the preserved episode when membership or policy was repaired.
+	// Timeline sequence numbers are identities, not indexes into a changed membership.
+	sequentialPosition := r.Sequence
+	if r.Settings.Mode == "SEQUENTIAL" && previous != nil {
+		for i, item := range order {
+			if item.ID == previous.ID {
+				sequentialPosition = int64(i + 1)
+				break
+			}
+		}
+	}
 	shows := append([]string{}, r.Shows...)
 	assetHistory := map[string]int64{}
 	for id, t := range r.AssetHistory {
@@ -62,6 +73,10 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 			return nil, invalid("Schedule exceeds 100,000 entries; shorten horizon or correct very short media")
 		}
 		m := order[seq%int64(len(order))]
+		if r.Settings.Mode == "SEQUENTIAL" {
+			m = order[sequentialPosition%int64(len(order))]
+			sequentialPosition++
+		}
 		reason := "sequential order"
 		if r.Settings.Mode == "RANDOM" {
 			reason = "seeded complete cycle"

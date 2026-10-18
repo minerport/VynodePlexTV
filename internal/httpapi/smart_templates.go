@@ -30,7 +30,14 @@ func (a *API) smartTemplateRoutes(mux *http.ServeMux) {
 				return
 			}
 			if action == "preview" {
-				reply(w, 200, map[string]any{"preview": preview, "source": source, "scheduleMode": "SMART_RANDOM", "presentation": "Inherits existing channel defaults"})
+				mode := "SMART_RANDOM"
+				if source.Type == "SHOW" {
+					mode = "SEQUENTIAL"
+				}
+				if v.ScheduleMode != "" {
+					mode = v.ScheduleMode
+				}
+				reply(w, 200, map[string]any{"preview": preview, "source": source, "scheduleMode": mode, "presentation": "Inherits existing channel defaults"})
 				return
 			}
 			if v.Number == "" {
@@ -40,10 +47,45 @@ func (a *API) smartTemplateRoutes(mux *http.ServeMux) {
 					return
 				}
 			}
-			channel, e := c.Save(r.Context(), "", channels.Definition{Number: v.Number, Name: v.Name, ShortName: v.Name, Description: "Created from an explicit shared smart-channel template.", Enabled: v.Template != "seasonal", Visibility: "VISIBLE", Logo: channels.Appearance{Source: "AUTO"}, Background: channels.Appearance{Source: "AUTO"}, Source: source}, u.User.ID)
+			group := v.GroupID
+			if group == nil {
+				inferred := ""
+				if source.Type == "SHOW" || v.MediaType == "episode" {
+					inferred = "tv"
+				} else if v.MediaType == "movie" || v.Template == "weekend" {
+					inferred = "movies"
+				}
+				if inferred != "" {
+					group = &inferred
+				}
+			}
+			if group != nil && *group == "" {
+				group = nil
+			}
+			channel, e := c.Save(r.Context(), "", channels.Definition{Number: v.Number, Name: v.Name, ShortName: v.Name, GroupID: group, Description: "Created from an explicit shared smart-channel template.", Enabled: v.Template != "seasonal", Visibility: "VISIBLE", Logo: channels.Appearance{Source: "AUTO"}, Background: channels.Appearance{Source: "AUTO"}, Source: source}, u.User.ID)
 			if e != nil {
 				a.channelError(w, e)
 				return
+			}
+			if v.ScheduleMode != "" || v.RepeatDays != nil || v.FutureDays != nil {
+				settings, err := a.scheduler.Settings(r.Context(), channel.ID)
+				if err == nil {
+					if v.ScheduleMode != "" {
+						settings.Mode = v.ScheduleMode
+					}
+					if v.RepeatDays != nil {
+						settings.MovieDays = *v.RepeatDays
+						settings.EpisodeDays = *v.RepeatDays
+					}
+					if v.FutureDays != nil {
+						settings.FutureDays = *v.FutureDays
+					}
+					_, err = a.scheduler.SaveSettings(r.Context(), channel.ID, settings, u.User.ID)
+				}
+				if err != nil {
+					problem(w, 500, "Channel created; scheduling preferences could not be saved. Edit the channel to retry.")
+					return
+				}
 			}
 			if v.Template == "seasonal" {
 				if e = p.SaveWindow(r.Context(), channel.ID, v.StartDate, v.EndDate, v.Timezone, u.User.ID); e != nil {

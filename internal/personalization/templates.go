@@ -28,15 +28,22 @@ func Templates() []Template {
 }
 
 type TemplateInput struct {
-	Template  string `json:"template"`
-	Selection string `json:"selection"`
-	Name      string `json:"name"`
-	Number    string `json:"number"`
-	MediaType string `json:"mediaType"`
-	Decade    int    `json:"decade"`
-	StartDate string `json:"startDate"`
-	EndDate   string `json:"endDate"`
-	Timezone  string `json:"timezone"`
+	GroupID       *string `json:"groupId"`
+	ScheduleMode  string  `json:"scheduleMode"`
+	RepeatDays    *int    `json:"repeatDays"`
+	FutureDays    *int    `json:"futureDays"`
+	YearFrom      int     `json:"yearFrom"`
+	YearTo        int     `json:"yearTo"`
+	MinimumRating float64 `json:"minimumRating"`
+	Template      string  `json:"template"`
+	Selection     string  `json:"selection"`
+	Name          string  `json:"name"`
+	Number        string  `json:"number"`
+	MediaType     string  `json:"mediaType"`
+	Decade        int     `json:"decade"`
+	StartDate     string  `json:"startDate"`
+	EndDate       string  `json:"endDate"`
+	Timezone      string  `json:"timezone"`
 }
 
 func WindowBounds(start, end, zone string) (int64, int64, error) {
@@ -55,6 +62,12 @@ func WindowBounds(start, end, zone string) (int64, int64, error) {
 	return a.UnixMilli(), b.AddDate(0, 0, 1).UnixMilli(), nil
 }
 func TemplateSource(v TemplateInput) (channels.Source, error) {
+	if (v.ScheduleMode != "" && v.ScheduleMode != "SEQUENTIAL" && v.ScheduleMode != "RANDOM" && v.ScheduleMode != "SMART_RANDOM") || (v.RepeatDays != nil && (*v.RepeatDays < 0 || *v.RepeatDays > 365)) || (v.FutureDays != nil && (*v.FutureDays < 1 || *v.FutureDays > 30)) || v.MinimumRating < 0 || v.MinimumRating > 10 {
+		return channels.Source{}, ErrInvalid
+	}
+	if (v.YearFrom != 0 && (v.YearFrom < 1880 || v.YearFrom > 2100)) || (v.YearTo != 0 && (v.YearTo < 1880 || v.YearTo > 2100)) || (v.YearFrom != 0 && v.YearTo != 0 && v.YearFrom > v.YearTo) {
+		return channels.Source{}, ErrInvalid
+	}
 	condition := func(field, op string, value any) channels.Node {
 		b, _ := json.Marshal(value)
 		return channels.Node{Type: "condition", Field: field, Operator: op, Value: b}
@@ -67,10 +80,10 @@ func TemplateSource(v TemplateInput) (channels.Source, error) {
 		}
 		nodes = append(nodes, condition(v.Template, "is", v.Selection))
 	case "comfort":
-		if v.Selection == "" {
+		if v.Selection == "" || (v.MediaType != "" && v.MediaType != "episode") {
 			return channels.Source{}, ErrInvalid
 		}
-		nodes = append(nodes, condition("show", "is", v.Selection), condition("media_type", "is", "episode"))
+		return channels.Source{Type: "SHOW", Show: &channels.ShowConfig{ShowID: v.Selection, EpisodeScope: "ALL"}}, nil
 	case "decade":
 		if v.Decade < 1880 || v.Decade > 2090 || v.Decade%10 != 0 {
 			return channels.Source{}, ErrInvalid
@@ -102,6 +115,15 @@ func TemplateSource(v TemplateInput) (channels.Source, error) {
 			return channels.Source{}, ErrInvalid
 		}
 		nodes = append(nodes, condition("media_type", "is", v.MediaType))
+	}
+	if v.YearFrom > 0 {
+		nodes = append(nodes, condition("year", "greater_than_or_equal", v.YearFrom))
+	}
+	if v.YearTo > 0 {
+		nodes = append(nodes, condition("year", "less_than_or_equal", v.YearTo))
+	}
+	if v.MinimumRating > 0 {
+		nodes = append(nodes, condition("rating", "greater_than_or_equal", v.MinimumRating))
 	}
 	return channels.Source{Type: "RULE", Rule: &channels.Rule{Version: 1, Root: channels.Node{Type: "group", Operator: "AND", Children: nodes}}}, nil
 }

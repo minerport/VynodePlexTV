@@ -10,6 +10,7 @@ import {
   dayLabel,
   dayStart,
   useServerClock,
+  timeLabel,
 } from "./timeline";
 import "./guide.css";
 type Memory = {
@@ -129,8 +130,19 @@ export function GuideGrid({
       `[data-program="${selectedProgram.id}"]`,
     );
     if (el) {
-      el.focus();
-      el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      el.focus({ preventScroll: true });
+      const view = viewport.current;
+      if (view) {
+        const cell = el.getBoundingClientRect(),
+          box = view.getBoundingClientRect();
+        const frozen =
+          Number.parseFloat(
+            getComputedStyle(view).getPropertyValue("--channel-width"),
+          ) || 220;
+        if (cell.right > box.right) view.scrollLeft += cell.right - box.right;
+        else if (cell.left < box.left + frozen)
+          view.scrollLeft -= box.left + frozen - cell.left;
+      }
       pendingFocus.current = false;
     }
   }, [data, selection, details, selectedProgram]);
@@ -216,7 +228,46 @@ export function GuideGrid({
           NOW
         </button>
       </div>
-      <div className="guide-toolbar">
+      <div className="guide-preview" aria-label="Selected program preview">
+        {selectedProgram && <img src={selectedProgram.artwork} alt="" />}
+        <div>
+          <span className="eyebrow">
+            {selectedChannel
+              ? selectedChannel.number + " · " + selectedChannel.name
+              : "YOUR TELEVISION"}
+          </span>
+          <h2>
+            {selectedProgram?.showTitle ||
+              selectedProgram?.title ||
+              "Choose a channel"}
+          </h2>
+          <p>
+            {selectedProgram
+              ? [
+                  selectedProgram.showTitle
+                    ? "S" +
+                      selectedProgram.season +
+                      " E" +
+                      selectedProgram.episode +
+                      " · " +
+                      selectedProgram.title
+                    : "",
+                  timeLabel(selectedProgram.start, zone) +
+                    " – " +
+                    timeLabel(selectedProgram.end, zone),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Browse what's on, or explore another day."}
+          </p>
+        </div>
+        {selectedProgram && (
+          <button onClick={() => setDetails(selectedProgram.id)}>
+            Program details
+          </button>
+        )}
+      </div>
+      <div className="guide-toolbar guide-groups">
         <button
           aria-pressed={!favorites && !group}
           onClick={() => {
@@ -329,7 +380,7 @@ export function GuideGrid({
           <div
             className="guide-canvas"
             style={{
-              width: `calc(var(--channel-width) + ${position(end, start)}px)`,
+              width: "100%",
               height: 60 + channels.length * ROW,
             }}
           >
@@ -414,7 +465,7 @@ export function GuideGrid({
                 className="now-line"
                 aria-label="Current time"
                 style={{
-                  left: `calc(var(--channel-width) + ${position(now, start)}px)`,
+                  left: `calc(var(--channel-width) + (100% - var(--channel-width)) * ${position(now, start) / position(end, start)})`,
                   height: channels.length * ROW,
                 }}
               />

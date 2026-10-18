@@ -98,6 +98,9 @@ type xmlPart struct {
 	Streams   []xmlStream `xml:"Stream"`
 }
 type xmlStream struct {
+	DOVI            *int   `xml:"DOVIPresent,attr"`
+	Transfer        string `xml:"colorTrc,attr"`
+	HDRVersion      string `xml:"HDR10Plus,attr"`
 	ID              string `xml:"id,attr"`
 	Type            *int   `xml:"streamType,attr"`
 	Codec           string `xml:"codec,attr"`
@@ -162,6 +165,18 @@ func (n xmlItem) model() MediaItem {
 			v.PartCount = len(media.Parts)
 			for _, s := range part.Streams {
 				v.Streams = append(v.Streams, Stream{ID: s.ID, Type: s.Type, Codec: s.Codec, Language: s.Language, LanguageCode: s.LanguageCode, Title: s.Title, Default: s.Default, Forced: s.Forced, HearingImpaired: s.HearingImpaired, Channels: s.Channels, Width: s.Width, Height: s.Height, Profile: s.Profile})
+				if s.Type != nil && *s.Type == 1 {
+					switch {
+					case s.DOVI != nil && *s.DOVI == 1:
+						v.HDR = "DOLBY_VISION"
+					case s.HDRVersion != "" && s.HDRVersion != "0":
+						v.HDR = "HDR10_PLUS"
+					case s.Transfer == "smpte2084":
+						v.HDR = "HDR10"
+					case s.Transfer == "arib-std-b67":
+						v.HDR = "HLG"
+					}
+				}
 			}
 			m.Versions = append(m.Versions, v)
 		}

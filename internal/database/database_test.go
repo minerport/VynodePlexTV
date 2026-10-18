@@ -117,7 +117,7 @@ func TestMigrationsAreIdempotentAndVerified(t *testing.T) {
 	if err = db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count); err != nil {
 		t.Fatal(err)
 	}
-	if count != 9 {
+	if count != 11 {
 		t.Fatal(count)
 	}
 	if _, err = db.Exec("UPDATE schema_migrations SET checksum='tampered'"); err != nil {
@@ -194,5 +194,83 @@ func TestPhaseTwoUpgradePreservesChannelsAndDefaults(t *testing.T) {
 	db.QueryRow("SELECT seed FROM channel_schedule_settings").Scan(&seedAgain)
 	if seedAgain != seed {
 		t.Fatal("migration changed seed")
+	}
+}
+
+func TestRefreshMigrationPreservesCustomIntervals(t *testing.T) {
+	db, e := Open(t.TempDir())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	migration, e := migrations.ReadFile("migrations/010_library_refresh.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, interval := range []int{21600, 3600, 300} {
+		if _, e = db.Exec("UPDATE plex_settings SET sync_interval_seconds=?", interval); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec(string(migration)); e != nil {
+			t.Fatal(e)
+		}
+		var actual int
+		if e = db.QueryRow("SELECT sync_interval_seconds FROM plex_settings").Scan(&actual); e != nil {
+			t.Fatal(e)
+		}
+		expected := interval
+		if interval == 21600 {
+			expected = 900
+		}
+		if actual != expected {
+			t.Fatalf("interval %d became %d", interval, actual)
+		}
+	}
+}
+
+func TestLegacyShowTemplateUpgrade(t *testing.T) {
+	db, e := Open(t.TempDir())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	legacy := `{"type":"RULE","rule":{"version":1,"root":{"type":"group","operator":"AND","children":[{"type":"condition","operator":"is_true","field":"availability"},{"type":"condition","operator":"is","field":"show","value":"show-fixture"},{"type":"condition","operator":"is","field":"media_type","value":"episode"}]}}}`
+	for _, id := range []string{"legacy", "mixed"} {
+		if _, e = db.Exec(`INSERT INTO channels(id,channel_number,name,channel_type,created_at,updated_at) VALUES(?,?,?,'RULE',1,1)`, id, id, id); e != nil {
+			t.Fatal(e)
+		}
+		source := legacy
+		if id == "mixed" {
+			source = `{"type":"RULE","rule":{"version":1,"root":{"type":"group","operator":"OR","children":[]}}}`
+		}
+		if _, e = db.Exec(`INSERT INTO channel_sources VALUES(?,'RULE',?,1,1)`, id, source); e != nil {
+			t.Fatal(e)
+		}
+		if _, e = db.Exec(`INSERT INTO channel_schedule_settings(channel_id,mode,timezone,anchor_ms,seed,created_at,updated_at) VALUES(?,'SMART_RANDOM','UTC',1,'preserved',1,1)`, id); e != nil {
+			t.Fatal(e)
+		}
+	}
+	migration, e := migrations.ReadFile("migrations/011_legacy_show_order.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 2; i++ {
+		if _, e = db.Exec(string(migration)); e != nil {
+			t.Fatal(e)
+		}
+	}
+	var kind, mode, seed, show string
+	if e = db.QueryRow(`SELECT c.channel_type,s.mode,s.seed,json_extract(src.config_json,'$.show.showId') FROM channels c JOIN channel_sources src ON src.channel_id=c.id JOIN channel_schedule_settings s ON s.channel_id=c.id WHERE c.id='legacy'`).Scan(&kind, &mode, &seed, &show); e != nil {
+		t.Fatal(e)
+	}
+	if kind != "SHOW" || mode != "SEQUENTIAL" || seed != "preserved" || show != "show-fixture" {
+		t.Fatal(kind, mode, seed, show)
+	}
+	if e = db.QueryRow(`SELECT mode FROM channel_schedule_settings WHERE channel_id='mixed'`).Scan(&mode); e != nil || mode != "SMART_RANDOM" {
+		t.Fatal(mode, e)
+	}
+	var jobs int
+	if e = db.QueryRow(`SELECT count(*) FROM jobs WHERE channel_id='legacy' AND type='SCHEDULE_REPAIR'`).Scan(&jobs); e != nil || jobs != 1 {
+		t.Fatal(jobs, e)
 	}
 }

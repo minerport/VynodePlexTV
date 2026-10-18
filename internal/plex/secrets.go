@@ -16,6 +16,22 @@ type Vault struct {
 	ClientID string
 }
 
+// NewVault accepts platform-protected key material for embedded clients. It never writes a key file.
+func NewVault(key []byte, clientID string) (*Vault, error) {
+	if len(key) != 32 || len(clientID) < 16 {
+		return nil, errors.New("Invalid platform encryption material")
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return &Vault{aead: aead, ClientID: clientID}, nil
+}
+
 func OpenVault(dir string, encryptedRowsExist bool) (*Vault, error) {
 	secrets := filepath.Join(dir, "secrets")
 	if err := os.MkdirAll(secrets, 0700); err != nil {

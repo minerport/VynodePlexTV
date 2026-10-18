@@ -1,0 +1,103 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: go test ./internal/... ./cmd/... && go vet ./internal/... ./cmd/...
+      - run: test -z "$(gofmt -l cmd internal)"
+      - run: npm ci --prefix web && npm test --prefix web -- --run && npm run lint --prefix web && npm run build --prefix web
+      - run: python3 scripts/validate-unraid.py
+  container:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/minerport/vynodeplextv:${{ steps.version.outputs.value }},ghcr.io/minerport/vynodeplextv:latest
+          build-args: VERSION=${{ steps.version.outputs.value }}
+  android:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Build embedded engine
+        run: |
+          mkdir -p clients/android-tv/app/src/main/jniLibs/arm64-v8a
+          GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o clients/android-tv/app/src/main/jniLibs/arm64-v8a/libafterglow.so ./cmd/android-engine
+      - name: Restore signing material
+        env:
+          SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/afterglow-release.jks"
+      - name: Test and build signed APK
+        env:
+          AFTERGLOW_KEYSTORE: ${{ runner.temp }}/afterglow-release.jks
+          AFTERGLOW_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          AFTERGLOW_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: bash clients/android-tv/gradlew -p clients/android-tv :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+      - name: Prepare verified release artifact
+        run: |
+          mkdir -p release
+          cp clients/android-tv/app/build/outputs/apk/release/app-release.apk "release/Afterglow-TV-${GITHUB_REF_NAME#v}-arm64.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose release/*.apk
+          (cd release && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: release/
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/afterglow-release.jks"
+  publish:
+    needs: [container, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release
+          path: release
+      - name: Publish beta release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --title "Afterglow TV ${GITHUB_REF_NAME#v} beta" --notes-file docs/RELEASE_NOTES.md --prerelease --verify-tag

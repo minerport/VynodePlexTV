@@ -9,3 +9,16 @@ web/playwright-report/
 *.db-wal
 *.exe
 *.tsbuildinfo
+clients/android-tv/.gradle/
+clients/android-tv/.kotlin/
+clients/android-tv/**/build/
+clients/android-tv/local.properties
+*.jks
+*.keystore
+clients/android-tv/app/src/main/jniLibs/
+
+*.apk
+*.aab
+*.pem
+*.p12
+*.pfx

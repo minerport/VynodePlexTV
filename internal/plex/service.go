@@ -43,7 +43,15 @@ func NewService(db *sql.DB, dir, version string, logger *slog.Logger) (*Service,
 	if err != nil {
 		return nil, err
 	}
-	if err = os.MkdirAll(filepath.Join(dir, "cache", "artwork"), 0700); err != nil {
+	return NewServiceWithVault(db, dir, version, logger, vault)
+}
+
+// NewServiceWithVault shares the inventory engine with a platform-owned credential vault.
+func NewServiceWithVault(db *sql.DB, dir, version string, logger *slog.Logger, vault *Vault) (*Service, error) {
+	if vault == nil {
+		return nil, errors.New("Credential vault required")
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "cache", "artwork"), 0700); err != nil {
 		return nil, err
 	}
 	s := &Service{db: db, vault: vault, dir: dir, log: logger, wake: make(chan struct{}, 1), links: make(map[string]*linkState), accountURL: "https://plex.tv", accountHTTP: newAccountHTTP(), version: version}

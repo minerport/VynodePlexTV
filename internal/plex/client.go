@@ -51,7 +51,7 @@ func NormalizeURL(raw string) (string, error) {
 }
 
 // plexDialContext handles resolvers that reject Plex's private-address DNS records.
-// Only the canonical IPv4.<32 hex certificate id>.plex.direct format is eligible,
+// Only an encoded IP.<32 hex certificate id>.plex.direct format is eligible,
 // and only after a DNS failure. HTTP Host, TLS SNI and certificate verification
 // continue to use the original hostname; this does not permit insecure TLS.
 func plexDialContext(dial func(context.Context, string, string) (net.Conn, error)) func(context.Context, string, string) (net.Conn, error) {
@@ -73,7 +73,10 @@ func plexDialContext(dial func(context.Context, string, string) (net.Conn, error
 			}
 		}
 		ip, parseErr := netip.ParseAddr(strings.ReplaceAll(labels[0], "-", "."))
-		if parseErr != nil || !ip.Is4() || ip.IsUnspecified() || ip.IsMulticast() {
+		if parseErr != nil {
+			ip, parseErr = netip.ParseAddr(strings.ReplaceAll(labels[0], "-", ":"))
+		}
+		if parseErr != nil || ip.Zone() != "" || ip.IsUnspecified() || ip.IsMulticast() {
 			return nil, err
 		}
 		return dial(ctx, network, net.JoinHostPort(ip.String(), port))

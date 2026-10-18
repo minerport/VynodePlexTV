@@ -29,7 +29,11 @@ export function GuideProgramCell({
       data-program={p.id}
       tabIndex={selected ? 0 : -1}
       className={`guide-program ${state.toLowerCase()}`}
-      style={{ ...g, paddingInline: g.width < 40 ? 0 : 12 }}
+      style={{
+        left: `${(g.left / position(end, start)) * 100}%`,
+        width: `${(g.width / position(end, start)) * 100}%`,
+        paddingInline: g.width < 40 ? 0 : 12,
+      }}
       onFocus={onFocus}
       onClick={onSelect}
       onKeyDown={(e) => {
@@ -83,12 +87,22 @@ export function GuideTimeHeader({
   return (
     <div className="guide-time">
       {ticks.map((t) => (
-        <span key={t} style={{ left: position(t, start) }}>
+        <span
+          key={t}
+          style={{
+            left: `${(position(t, start) / position(end, start)) * 100}%`,
+          }}
+        >
           {timeLabel(t, zone)}
         </span>
       ))}
       {now >= start && now < end && (
-        <b className="now-label" style={{ left: position(now, start) }}>
+        <b
+          className="now-label"
+          style={{
+            left: `${(position(now, start) / position(end, start)) * 100}%`,
+          }}
+        >
           NOW
         </b>
       )}

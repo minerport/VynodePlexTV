@@ -98,12 +98,26 @@ it.each([
       target: { value: "2026-10-31" },
     });
   }
+  fireEvent.change(screen.getByLabelText("Programming order"), {
+    target: { value: "SEQUENTIAL" },
+  });
+  fireEvent.change(screen.getByLabelText("Repeat window (days)"), {
+    target: { value: "14" },
+  });
+  fireEvent.change(screen.getByLabelText("Minimum rating"), {
+    target: { value: "7" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Preview membership" }));
   expect(await screen.findByText("7 matching items")).toBeInTheDocument();
   expect(request).toHaveBeenCalledWith(
     "/smart-channel-templates/preview",
     "POST",
-    expect.objectContaining({ template }),
+    expect.objectContaining({
+      template,
+      scheduleMode: "SEQUENTIAL",
+      repeatDays: 14,
+      minimumRating: 7,
+    }),
     "fixture",
   );
 });

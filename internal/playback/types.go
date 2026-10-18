@@ -52,6 +52,7 @@ type OnNow struct {
 	Progress float64          `json:"progress"`
 }
 type TuneRequest struct {
+	resume               *Tune
 	continuation         bool
 	presentationFallback bool
 	ProgramID            string            `json:"programId,omitempty"`
@@ -62,6 +63,7 @@ type TuneRequest struct {
 	ReplaceSession       string            `json:"replaceSession,omitempty"`
 }
 type Tune struct {
+	Version    *plex.MediaVersion     `json:"version,omitempty"`
 	Branding   interstitials.Branding `json:"branding"`
 	Origin     string                 `json:"origin"`
 	ID         string                 `json:"id"`

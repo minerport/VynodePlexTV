@@ -26,3 +26,49 @@ it("opens official Plex authorization without asking for a password or token", a
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
   expect(screen.queryByLabelText(/password|token/i)).not.toBeInTheDocument();
 });
+
+it("selects automatic secure discovery without asking the user to pick a network interface", async () => {
+  vi.mocked(request).mockImplementation(async (path) => {
+    if (path.endsWith("/poll"))
+      return {
+        status: "AUTHORIZED",
+        servers: [
+          {
+            id: "server",
+            name: "Cinema",
+            owned: true,
+            connections: [
+              {
+                uri: "https://example.invalid",
+                protocol: "https",
+                local: true,
+                relay: false,
+              },
+            ],
+          },
+        ],
+      } as never;
+    if (path.endsWith("/connect")) return { id: "saved" } as never;
+    return {
+      id: "link",
+      authUrl: "https://app.plex.tv/auth",
+      expiresAt: 9999999999,
+    } as never;
+  });
+  const connected = vi.fn();
+  render(<PlexSignIn csrf="csrf" onConnected={connected} />);
+  fireEvent.click(screen.getByRole("button", { name: "Sign in with Plex" }));
+  const connect = await screen.findByRole(
+    "button",
+    { name: "Connect this server" },
+    { timeout: 4000 },
+  );
+  expect(screen.getByRole("combobox")).toHaveValue("");
+  fireEvent.click(connect);
+  expect(request).toHaveBeenCalledWith(
+    "/plex/link/link/connect",
+    "POST",
+    { serverId: "server", uri: "" },
+    "csrf",
+  );
+});

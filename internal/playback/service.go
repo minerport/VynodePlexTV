@@ -120,7 +120,7 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if r.Mode != "LIVE" && r.Mode != "FROM_BEGINNING" {
 		return out, failure("INVALID", "Choose Watch Live or Watch From Beginning")
 	}
-	if len(r.ClientID) < 1 || len(r.ClientID) > 100 || r.Capabilities.ClientType != "browser" {
+	if len(r.ClientID) < 1 || len(r.ClientID) > 100 || (r.Capabilities.ClientType != "browser" && r.Capabilities.ClientType != "android-tv") {
 		return out, failure("INVALID", "Invalid playback client")
 	}
 	c, e := s.channel(ctx, r.ChannelID)
@@ -193,6 +193,10 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if e != nil {
 		return out, e
 	}
+	if ctx.Err() != nil {
+		resolved.Source.Close(context.Background())
+		return out, ctx.Err()
+	}
 	if proxy, ok := resolved.Source.(interface{ SetProxyPrefix(string) }); ok {
 		proxy.SetProxyPrefix("/api/v1/playback/" + id + "/stream/" + streamID + "/")
 	}
@@ -213,12 +217,18 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if r.Mode == "FROM_BEGINNING" {
 		position = 0
 	}
+	if r.resume != nil {
+		position = min(max(0, r.resume.Position), resolved.Duration-1)
+		origin = r.resume.Origin
+		r.Mode = r.resume.Mode
+	}
 	branding, e := s.schedule.Presentation.Branding(ctx, c.ID)
 	if e != nil {
 		resolved.Source.Close(context.Background())
 		return out, e
 	}
 	out = Tune{Branding: branding, Origin: origin, ID: id, Channel: c, Program: *p, Next: next, Mode: r.Mode, State: "STARTING", ServerTime: now.UnixMilli(), LiveOffset: offset, Position: position, Duration: resolved.Duration, StreamURL: "/api/v1/playback/" + id + "/stream/" + streamID + "/main", Mime: resolved.Mime, Delivery: resolved.Mode, AddedAt: resolved.AddedAt}
+	out.Version = resolved.Version
 	if continuing != nil {
 		continuing.mu.Lock()
 		defer continuing.mu.Unlock()
@@ -256,6 +266,7 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 		continuing.cancel()
 		streamCtx, cancel := context.WithCancel(context.Background())
 		continuing.source = resolved.Source
+		continuing.caps = r.Capabilities
 		continuing.tune = out
 		continuing.last = now.UnixMilli()
 		continuing.ctx = streamCtx

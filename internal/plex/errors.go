@@ -1,6 +1,9 @@
 package plex
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type Error struct {
 	Code    string
@@ -25,6 +28,10 @@ func SafeMessage(err error) string {
 	}
 	if errors.Is(err, contextCanceled) {
 		return "Operation cancelled"
+	}
+	var databaseError interface{ Code() int }
+	if errors.As(err, &databaseError) {
+		return fmt.Sprintf("Local inventory database rejected an update (code %d). Existing inventory was preserved.", databaseError.Code())
 	}
 	return "Plex operation failed. Check server status and try again."
 }

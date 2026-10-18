@@ -1,3 +1,4 @@
+import { AppearanceSettings } from "./Appearance";
 import { PresentationAdmin } from "./presentation/PresentationAdmin";
 import { MyChannels } from "./personalization/MyChannels";
 import { ForYou } from "./personalization/ForYou";
@@ -680,6 +681,7 @@ function SettingsPage({
         <h1>Set the atmosphere.</h1>
         <p>The essentials for your television space.</p>
       </div>
+      <AppearanceSettings />
       <div className="settings-layout">
         <form className="settings-panel" onSubmit={save}>
           <div className="panel-title">

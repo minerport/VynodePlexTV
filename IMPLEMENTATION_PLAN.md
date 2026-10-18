@@ -100,3 +100,13 @@ Extend the existing scheduler with persisted interstitial entries and a unified 
 Validation includes the real Phase 5 database upgrade, three configured persistent channels, private non-sensitive uploaded clips, real Plex trailers, decoded program → local clips → Plex trailer → metadata → next program under one viewer session, offline/recovery, restart and repair stability. Exact evidence and limits are in VALIDATION.md. The unrelated compromised webhook credential was not accessed or reused and remains an external follow-up.
 
 Recommended next scope, only with a new instruction: **Phase 7 — Personalization and Smart Programming**. Per-user channel ordering and richer favorites; viewing-history signals and replaceable On Now ranking; explicit personalized/mood/actor/director/seasonal channel creation; household preferences and a refined personal home. Preserve deterministic persisted schedules, user isolation and offline local membership. Phase 7 was not part of the Phase 6 implementation.
+
+### Phase 8 revised scope (in progress)
+
+User correction supersedes the server-dependent TV client plan: ship a complete
+standalone Android APK with native TV UI, embedded programming engine, Plex QR
+sign-in, library synchronization, local channel creation and Media3 playback.
+Keep the validated Docker application independent. No Afterglow pairing, discovery,
+or remote Afterglow account requirement. Validate on the physical Shield, then
+complete playback-quality, lifecycle and native administration validation before
+marking Phase 8 complete. Do not begin Phase 9.

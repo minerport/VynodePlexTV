@@ -145,3 +145,16 @@ Optional failures show an explicit next-up card for the remaining persisted inte
 Guide queries retain main program rows and original durations, so breaks are genuine time between cells rather than micro-cell spam. Scheduling Studio queries every timeline entry. Mini-guide emphasizes the next meaningful feature during a break; player/Home station-break state uses presentation identity. Mini-guide and Starting Soon aggregate paginated channel responses with a non-progress guard instead of silently stopping at 100.
 
 Broadcast administration provides typed forms, file/drop upload progress, local previews, trailer discovery, rule editing, channel overrides and non-mutating branding preview. Live overlays use safe margins, subtle bug opacity and controls-aware hiding. Next-up is restricted to synchronized live viewing. No Phase 7 implementation is included.
+
+### Phase 8 direction correction — standalone Android
+
+The Android APK now embeds the Go programming engine and private SQLite database.
+The native Compose/Media3 client connects directly to Plex; it does not depend on
+an Afterglow Docker server. Random authenticated loopback IPC is an implementation
+detail inside the application, not a network service. Each installation owns its
+channel identities, anchors, schedules, history and encrypted credentials. The
+Android Keystore protects the engine's credential key. Docker retains its existing
+key-file behavior and deployment. No native device-pairing schema is required.
+See ANDROID_TV.md for build/runtime boundaries and current validation limitations.
+
+Plex account linking now supports an empty connection URI for bounded HTTPS endpoint discovery in the shared Plex service. Both clients expose this default; explicit addresses must still belong to the account resource. Discovery uses four workers and verifies machine identity plus library authorization. DNS recovery retains TLS hostname validation and supports IPv4/IPv6. No account credentials are added to persistent storage and existing server identity/inventory is retained on reconnect.

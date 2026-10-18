@@ -63,3 +63,18 @@ func TestPlexDNSFallbackPreservesTLSVerification(t *testing.T) {
 		t.Fatal("fallback must reject untrusted certificates before sending credentials")
 	}
 }
+
+func TestPlexDNSFallbackIPv6(t *testing.T) {
+	calls := 0
+	dial := plexDialContext(func(_ context.Context, _, address string) (net.Conn, error) {
+		calls++
+		if calls == 2 && address != "[fd28:3585:4dd3:43eb:fe9d:5ff:fe07:27fa]:32400" {
+			t.Fatalf("unexpected IPv6 target %s", address)
+		}
+		return nil, &net.DNSError{IsNotFound: true}
+	})
+	_, _ = dial(context.Background(), "tcp", "fd28-3585-4dd3-43eb-fe9d-05ff-fe07-27fa.0123456789abcdef0123456789abcdef.plex.direct:32400")
+	if calls != 2 {
+		t.Fatal("IPv6 fallback not attempted")
+	}
+}

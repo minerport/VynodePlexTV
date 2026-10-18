@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 export const MINUTE = 60000,
   HOUR = 60 * MINUTE,
   SCALE = 6,
-  ROW = 110;
+  ROW = 84;
 export const position = (time: number, start: number) =>
   ((time - start) / MINUTE) * SCALE;
 export function geometry(start: number, end: number, from: number, to: number) {
