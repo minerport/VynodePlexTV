@@ -6,7 +6,7 @@
   <Network>bridge</Network>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Icon>https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.svg</Icon>
+  <Icon>https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.png</Icon>
   <WebUI>http://[IP]:[PORT:8080]</WebUI>
   <Overview>Afterglow TV turns your Plex libraries into deterministic linear television channels, with a full guide, live tuning, catch-up, favorites and broadcast presentation. Plex provides the media; Afterglow maintains its own local inventory and schedules. Browser Origin defaults to auto for LAN setup. The optional Android TV APK is standalone and does not require this container. Beta: hardware and network compatibility varies.</Overview>
   <Project>https://github.com/minerport/VynodePlexTV</Project>

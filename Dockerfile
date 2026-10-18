@@ -20,7 +20,7 @@ ARG VERSION=0.9.1
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /server ./cmd/server
 
 FROM alpine:3.23 AS runtime
-LABEL net.unraid.docker.icon="https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.svg" net.unraid.docker.webui="http://[IP]:[PORT:8080]"
+LABEL net.unraid.docker.icon="https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.png" net.unraid.docker.webui="http://[IP]:[PORT:8080]"
 LABEL org.opencontainers.image.title="Afterglow TV" org.opencontainers.image.source="https://github.com/minerport/VynodePlexTV" org.opencontainers.image.licenses="GPL-3.0"
 RUN apk add --no-cache ca-certificates tzdata ffmpeg && addgroup -g 10001 app && adduser -D -u 10001 -G app app && mkdir -p /config && chown app:app /config
 WORKDIR /app

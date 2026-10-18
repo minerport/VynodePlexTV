@@ -37,3 +37,9 @@ The template supplies the icon and WebUI automatically. Docker images also inclu
 installations. Existing containers need an image update and recreation to inherit
 new image labels; restarting alone does not change container metadata. An explicit
 container label overrides the image default. Unraid may cache an existing icon.
+
+If an older installation saved an explicit `icon.svg` Icon URL, change it once to
+`https://raw.githubusercontent.com/minerport/VynodePlexTV/main/icon.png` and Apply.
+New templates/images use PNG automatically. Unraid caches icons and explicit saved
+container/template metadata can override image labels; pulling alone cannot rewrite
+those saved overrides.

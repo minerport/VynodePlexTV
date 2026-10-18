@@ -24,3 +24,11 @@ print('Unraid template/profile structural checks passed')
 dockerfile = (root / 'Dockerfile').read_text()
 assert f'net.unraid.docker.icon="{app.findtext("Icon")}"' in dockerfile
 assert f'net.unraid.docker.webui="{app.findtext("WebUI")}"' in dockerfile
+
+# Dockerman does not reliably render SVG icons. Verify a real PNG, not a renamed SVG.
+import struct
+icon = (root / 'icon.png').read_bytes()
+assert app.findtext('Icon').endswith('/icon.png')
+assert ET.parse(root / 'ca_profile.xml').getroot().findtext('Icon') == app.findtext('Icon')
+assert icon[:8] == b'\x89PNG\r\n\x1a\n'
+assert struct.unpack('>II', icon[16:24]) == (256, 256)

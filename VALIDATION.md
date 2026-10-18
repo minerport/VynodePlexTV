@@ -784,3 +784,7 @@ APP_ORIGIN now defaults to auto: write requests must carry an HTTP(S) Origin mat
 Plex account discovery tries verified HTTPS first (14-second budget), then only Plex-advertised local private/loopback literal HTTP endpoints. Credentials never follow redirects; no public/DNS/relay HTTP automatic fallback and no fallback after unauthorized access. Manual HTTP/HTTPS selection remains available. Identity and library-access verification still apply before saving.
 
 Validation: backend regression suite, vet and gofmt checks; automatic-origin custom-port owner setup/login and cross-origin rejection; local HTTP fallback and unsafe-candidate rejection; 67 web tests, lint and production build. Live Unraid/Plex validation of this change remains pending. Shared engine source is updated; the previously published APK is not rebuilt by the Docker packaging workflow.
+
+### Unraid icon compatibility correction
+
+Replaced the hosted SVG references with a rendered 256x256 PNG in the Docker image labels, application template and CA profile. The original SVG remains the editable source. Structural checks verify the PNG signature/dimensions and matching URLs. Existing Unraid templates that explicitly saved the old SVG URL must update that saved field to the PNG URL; image metadata cannot override explicit container labels. Actual Unraid display confirmation remains pending.
