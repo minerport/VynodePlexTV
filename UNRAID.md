@@ -6,7 +6,7 @@ Afterglow TV is a standalone Plex-powered television app. Its repository name is
 
 The Community Applications template is [templates/afterglow-tv.xml](templates/afterglow-tv.xml). Inclusion in the Apps catalog requires separate Community Applications review; a GitHub release does not imply acceptance.
 
-Until listed, download the raw XML into `/boot/config/plugins/dockerMan/templates-user/my-afterglow-tv.xml` on Unraid, then select it from **Docker → Add Container → Template**. Download only from this repository. The image is `ghcr.io/minerport/vynodeplextv:latest`; pin `:0.9.1` for this beta release.
+Until listed, download the raw XML into `/boot/config/plugins/dockerMan/templates-user/my-afterglow-tv.xml` on Unraid, then select it from **Docker → Add Container → Template**. Download only from this repository. The image is `ghcr.io/minerport/vynodeplextv:latest`. Each validated main-branch publication updates `latest`. Use Unraid Check for Updates / Update to pull it; unattended updates require configuring Unraid automatic updates.
 
 1. Map `/config` to `/mnt/user/appdata/afterglow-tv` (prefer a cache/appdata pool).
 2. Choose the host port, default 8080.

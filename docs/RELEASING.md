@@ -7,3 +7,5 @@ Android signing requires Actions secrets ANDROID_KEYSTORE_BASE64 and ANDROID_KEY
 Ensure the GHCR package is publicly readable and verify an anonymous image pull. Publish source for each binary tag under the repository GPL-3.0 license. Dependency licenses remain with their respective owners. Android/Go dependencies are obtained from declared manifests; Alpine/FFmpeg packages retain their upstream license notices and source repositories.
 
 CA submission uses the public repository URL at ca.unraid.net/submit; run its hosted Validate and Scan. Local XML checks do not substitute for review or acceptance. Do not advertise catalog inclusion before acceptance.
+
+Validated main-branch pushes automatically publish `ghcr.io/minerport/vynodeplextv:latest`. Unraid and Compose installation defaults track latest. Versioned release tags remain available for recovery, not the default installation path. Unraid update scheduling is controlled by the operator.

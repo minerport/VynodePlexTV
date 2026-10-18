@@ -2,13 +2,30 @@ name: Container packaging
 on:
   push:
     branches: [main]
-    paths: [Dockerfile, '.github/workflows/container-packaging.yml']
   workflow_dispatch:
 permissions:
   contents: read
   packages: write
+concurrency:
+  group: container-latest
+  cancel-in-progress: true
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: go test ./internal/... ./cmd/... && go vet ./internal/... ./cmd/...
+      - run: test -z "$(gofmt -l cmd internal)"
+      - run: npm ci --prefix web && npm test --prefix web -- --run && npm run lint --prefix web && npm run build --prefix web
+      - run: python3 scripts/validate-unraid.py
   publish:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,4 +41,4 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: ghcr.io/minerport/vynodeplextv:latest,ghcr.io/minerport/vynodeplextv:0.9.1-unraid
+          tags: ghcr.io/minerport/vynodeplextv:latest

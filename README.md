@@ -8,7 +8,7 @@ A standalone, self-hosted, TV-first home for Plex-powered linear channels. Indep
 
 - [Signed Android TV APK and checksums](https://github.com/minerport/VynodePlexTV/releases/tag/v0.9.1). ARM64; runs independently of Docker.
 - [Unraid installation and Community Applications template](UNRAID.md). Catalog submission/review is separate.
-- Docker image: `ghcr.io/minerport/vynodeplextv:0.9.1`. Use `docker compose -f compose.release.yaml up -d` after configuring `.env` from `.env.example`.
+- Docker image: `ghcr.io/minerport/vynodeplextv:latest`. Use `docker compose -f compose.release.yaml up -d` after configuring `.env` from `.env.example`.
 - [Release notes and limitations](docs/RELEASE_NOTES.md). Licensed under [GPL-3.0](LICENSE).
 
 ## Your television
