@@ -97,7 +97,11 @@ export function ViewerHome({
             {v.channel.number} · {v.channel.name}
           </span>
           <h3>
-            {v.program?.showTitle || v.program?.title || "Schedule not ready"}
+            {v.program?.entryType === "INTERSTITIAL"
+              ? "Station Break"
+              : v.program?.showTitle ||
+                v.program?.title ||
+                "Schedule not ready"}
           </h3>
           {v.program?.showTitle && (
             <p>
@@ -115,7 +119,13 @@ export function ViewerHome({
               Watch Live
             </button>
             {v.program && (
-              <button onClick={() => setDetails(v.program!.id)}>Details</button>
+              <button
+                onClick={() =>
+                  setDetails(v.program!.followingProgramId || v.program!.id)
+                }
+              >
+                Details
+              </button>
             )}
             <FavoriteButton
               id={v.channel.id}

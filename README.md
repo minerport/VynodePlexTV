@@ -2,7 +2,23 @@
 
 A standalone, self-hosted, TV-first home for Plex-powered linear channels. Independent of VyNode Media.
 
-**Phase 5:** Browse the full television guide, tune live, restart current or retained past programs, save personal favorites and browse a mini-guide while watching. Separate Recently Added Movies and TV networks, deterministic schedules, encrypted Plex connections and outage-safe local inventory remain intact. No sample media is presented as real content.
+**Phase 6 / 0.7.0:** Broadcast Presentation adds scheduled bumpers, idents, custom clips, available Plex trailers and next-up presentation to the full guide/player experience. Separate Recently Added Movies and TV networks, deterministic schedules, encrypted Plex connections and outage-safe local inventory remain intact. No sample media is presented as real content.
+
+## Broadcast Presentation
+
+Owners/admins open **Broadcast** to upload assets, create rules and configure each channel. Presentation is opt-in. Upload real MP4/H.264 clips with AAC audio (or no audio), at most 1080p and ten minutes. The server inspects files with ffprobe; it does not transcode them. The default upload limit is 256 MiB, configurable with `PRESENTATION_UPLOAD_MB` (1–1024). Local development requires ffprobe on PATH; the Docker image includes it. Files persist under `/config/presentation`, outside the webroot. Preview and playback are authenticated and support byte ranges.
+
+Assets can be Bumper, Ident, Trailer, Coming Up Next, Custom Clip or Filler. Assign tags and optional inclusive active dates. Plex Media uses an existing short playable inventory item; **Discover Plex trailers** imports only real extras exposed for the supplied local media ID. Hosted extras remain resolved by Plex, with credentials kept server-side. Missing trailers are optional; nothing is scraped or downloaded from external sites by Afterglow.
+
+Rules select asset kind/tag, movie or episode scope, frequency, repeat window, priority and duration ceiling. Choose before programs, between programs or the first safe boundary after a clock-hour crossing. This is not a hard-clock scheduler. Filler uses real eligible clips within the duration ceiling; it does not pad, trim or invent silent gaps. A channel may inherit global rules, disable individual defaults, or use its own rules. Enable presentation, save, then choose **Repair future schedule** to apply at a protected boundary. Background maintenance also detects changed presentation inputs.
+
+Clips consume real time in the persisted timeline. Scheduling Studio displays every entry; the viewer guide stays program-centric. Seeded selection, retained asset history and schedule fingerprints keep future entries stable through restart and reruns. Repeat windows relax to the oldest eligible asset when the pool is exhausted. Seasonal eligibility uses the channel timezone. A referenced asset cannot be deleted until its retained timeline references expire or are repaired away; disable it to exclude future selection.
+
+Channel Presentation also offers a separately uploaded compact logo, a subtle corner bug and a Coming Up Next overlay (0–120 seconds; default 45). The bug uses TV-safe margins and hides with visible controls. Next-up appears only near a live boundary, not during catch-up or paused/behind-live viewing. The branding preview does not change the timeline.
+
+Live transitions keep one viewer session while swapping isolated Plex/local stream resources. A failed optional clip becomes a visible next-up card for the remaining persisted interval, then the main program starts on schedule; future repair excludes confirmed missing assets. Main programming is never silently moved early. Watch From Beginning/catch-up plays the selected main program without prepending presentation. Local clips work without Plex; Plex-backed programming still requires its server.
+
+The application does not impose a total uploaded-storage quota: administrators should monitor `/config`. No video generation, arbitrary media transcoder, exact-hour slots or external trailer scraping is included.
 
 ## Recently Added and watching TV
 
@@ -14,7 +30,7 @@ Both templates default to Smart Random with recency preference. TV additionally 
 
 Player keys: **↑/Page Up** next channel, **↓/Page Down** previous, **Space** play/pause, **←/→** focus controls, **Enter** activate, **Escape** exit. Type a channel number; it resolves after 1.2 seconds. Controls fade after 6.5 seconds and reappear with pointer activity or control navigation. Browsers may require pressing Play once to allow audio. Last-channel preference is persisted per application user on the server; Plex credentials never enter browser storage.
 
-Plex serves all media. Conservative MP4/H.264/AAC browser compatibility uses Direct Play; other supported single-part versions negotiate Plex's universal media decision then use HLS via the authenticated application proxy. Plex may copy streams or transcode according to its decision. No independent transcoder or direct filesystem access is used. Client resolution is currently capped at 1080p; advanced quality/version/subtitle selection and multipart titles are deferred. Transcoding availability depends on the Plex server/account. A retry resolves a fresh current program and session. An outage does not change inventory/schedules.
+Plex serves library programming; Afterglow serves uploaded presentation clips. Conservative MP4/H.264/AAC browser compatibility uses Direct Play; other supported single-part versions negotiate Plex's universal media decision then use HLS via the authenticated application proxy. Plex may copy streams or transcode according to its decision. No independent transcoder or direct filesystem access is used. Client resolution is currently capped at 1080p; advanced quality/version/subtitle selection and multipart titles are deferred. Transcoding availability depends on the Plex server/account. A retry resolves a fresh current program and session. An outage does not change inventory/schedules.
 
 Settings includes active application viewers. Sessions are independent by viewer/client, stop on exit/switch/logout, expire after 90 seconds without heartbeat (cleanup every 30 seconds), and are stopped on application restart. Recent stopped records are retained seven days for diagnostics. Media is streamed without disk caching; existing bounded artwork caching remains unchanged. Reverse proxies must permit long streaming responses, Range requests, and buffering settings appropriate for video.
 

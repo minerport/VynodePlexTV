@@ -70,8 +70,8 @@ export const guideAPI = {
           limit: "50",
         }),
     ),
-  now: () => request<WindowData>("/guide/on-now?limit=100"),
-  soon: () => request<WindowData>("/guide/starting-soon?limit=100"),
+  now: () => allChannels("on-now"),
+  soon: () => allChannels("starting-soon"),
   detail: (id: string) =>
     request<Detail>("/guide/programs/" + encodeURIComponent(id)),
   favorites: () => request<{ channelIds: string[] }>("/users/me/favorites"),
@@ -85,3 +85,20 @@ export const guideAPI = {
   last: () => request<{ channelId: string }>("/users/me/last-channel"),
 };
 export type TuneAction = (channel: string, program?: string) => void;
+
+async function allChannels(kind: string): Promise<WindowData> {
+  const first = await request<WindowData>(`/guide/${kind}?limit=100&offset=0`);
+  let page = first;
+  let offset = page.channels.length;
+  while (page.more) {
+    if (!page.channels.length)
+      throw new Error("Channel pagination did not advance");
+    page = await request<WindowData>(
+      `/guide/${kind}?limit=100&offset=${offset}`,
+    );
+    first.channels.push(...page.channels);
+    first.warnings.push(...page.warnings);
+    offset += page.channels.length;
+  }
+  return { ...first, more: false };
+}

@@ -80,6 +80,9 @@ func (s *Service) ResolvePlayback(ctx context.Context, id string, caps Capabilit
 	if !local.Available {
 		return PlaybackResolution{}, failure("NOT_FOUND", "This program is currently unavailable")
 	}
+	return s.resolveMedia(ctx, local, caps, session)
+}
+func (s *Service) resolveMedia(ctx context.Context, local MediaItem, caps Capabilities, session string) (PlaybackResolution, error) {
 	provider, _, e := s.provider(ctx, local.ServerID)
 	if e != nil {
 		return PlaybackResolution{}, e
@@ -105,7 +108,9 @@ func (s *Service) ResolvePlayback(ctx context.Context, id string, caps Capabilit
 		if selected == nil {
 			selected = v
 		}
-		if DirectCompatible(*v, caps) {
+		// Hosted extras may advertise MP4 codecs but have a remote Part key.
+		// Plex must resolve those through its HLS pipeline; never proxy that URL.
+		if DirectCompatible(*v, caps) && safeArtworkPath(v.PartKey) && strings.HasPrefix(v.PartKey, "/library/parts/") {
 			selected = v
 			direct = true
 			break
@@ -332,4 +337,11 @@ func (s *streamSource) Close(ctx context.Context) error {
 		r.Body.Close()
 	}
 	return e
+}
+
+// SetProxyPrefix separates a stable application viewer from each Plex stream session.
+func (s *streamSource) SetProxyPrefix(prefix string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.prefix = prefix
 }

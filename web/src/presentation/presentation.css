@@ -1,0 +1,139 @@
+.channel-bug {
+  position: absolute;
+  z-index: 3;
+  max-width: 15vw;
+  max-height: 12vh;
+  object-fit: contain;
+  pointer-events: none;
+  filter: grayscale(0.3);
+}
+.channel-bug.top-left {
+  top: 6%;
+  left: 5%;
+}
+.channel-bug.top-right {
+  top: 6%;
+  right: 5%;
+}
+.channel-bug.bottom-left {
+  bottom: 16%;
+  left: 5%;
+}
+.channel-bug.bottom-right {
+  bottom: 16%;
+  right: 5%;
+}
+.coming-next,
+.station-break {
+  position: absolute;
+  z-index: 4;
+  left: 5%;
+  right: 5%;
+  pointer-events: none;
+  background: linear-gradient(120deg, #171123ed, #392349e8);
+  border: 1px solid #9677a5;
+  border-radius: 20px;
+  padding: clamp(18px, 3vw, 48px);
+  color: #f4e7ff;
+}
+.coming-next {
+  top: 7%;
+  max-width: 650px;
+}
+.station-break {
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.station-break h2 {
+  font-size: clamp(28px, 5vw, 70px);
+}
+.coming-next p,
+.station-break > p:first-child {
+  letter-spacing: 0.18em;
+  color: #dabbea;
+}
+.presentation-admin {
+  max-width: 1300px;
+  margin: auto;
+}
+.presentation-admin section {
+  margin: 24px 0;
+  padding: 24px;
+  background: #21192bbd;
+  border: 1px solid #52405f;
+  border-radius: 20px;
+}
+.presentation-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+}
+.presentation-admin label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.presentation-admin input,
+.presentation-admin select {
+  padding: 12px;
+  background: #15121c;
+  color: white;
+  border: 1px solid #675078;
+  border-radius: 10px;
+}
+.presentation-assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+.presentation-asset {
+  border: 1px solid #655071;
+  border-radius: 14px;
+  padding: 20px;
+}
+.presentation-asset video {
+  width: 100%;
+}
+.asset-thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  background: #0d0a13;
+}
+.metadata-thumbnail {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, #674875, #16121b);
+  letter-spacing: 0.12em;
+}
+.presentation-drop {
+  border: 2px dashed #9c7eb4;
+  padding: 24px;
+  border-radius: 16px;
+}
+.branding-preview {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: radial-gradient(ellipse at center, #674875, #16121b);
+  overflow: hidden;
+  border-radius: 16px;
+}
+.branding-preview .station-break,
+.branding-preview .coming-next {
+  font-size: 14px;
+}
+.presentation-admin button {
+  margin: 6px;
+}
+.presentation-admin .rule-row {
+  padding: 16px 0;
+  border-bottom: 1px solid #52405f;
+}

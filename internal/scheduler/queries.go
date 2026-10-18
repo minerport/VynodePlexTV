@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-const entrySelect = `SELECT p.id,p.channel_id,p.media_item_id,p.start_time_utc,p.end_time_utc,p.duration_ms,p.sequence_number,p.schedule_revision,p.policy_reason,m.title,COALESCE(sh.title,''),m.parent_index_number,m.index_number,m.available FROM channel_programs p JOIN plex_media_items m ON m.id=p.media_item_id LEFT JOIN plex_media_items sh ON sh.plex_server_id=m.plex_server_id AND sh.plex_rating_key=m.grandparent_rating_key `
+const entrySelect = `SELECT p.id,p.channel_id,p.media_item_id,p.start_time_utc,p.end_time_utc,p.duration_ms,p.sequence_number,cp.schedule_revision,p.policy_reason,CASE WHEN p.entry_type='INTERSTITIAL' THEN a.name ELSE m.title END,CASE WHEN p.entry_type='PROGRAM' THEN COALESCE(sh.title,'') ELSE '' END,m.parent_index_number,m.index_number,CASE WHEN p.entry_type='PROGRAM' THEN m.available ELSE a.available END,p.entry_type,p.asset_id,p.following_program_id FROM broadcast_timeline p JOIN channel_programs cp ON cp.id=p.following_program_id JOIN plex_media_items m ON m.id=p.media_item_id LEFT JOIN interstitial_assets a ON a.id=p.asset_id LEFT JOIN plex_media_items sh ON sh.plex_server_id=m.plex_server_id AND sh.plex_rating_key=m.grandparent_rating_key `
 
 type scanner interface{ Scan(...any) error }
 
 func scanEntry(row scanner) (Entry, error) {
 	var p Entry
-	e := row.Scan(&p.ID, &p.ChannelID, &p.MediaID, &p.Start, &p.End, &p.Duration, &p.Sequence, &p.Revision, &p.Reason, &p.Title, &p.ShowTitle, &p.Season, &p.Episode, &p.Available)
+	e := row.Scan(&p.ID, &p.ChannelID, &p.MediaID, &p.Start, &p.End, &p.Duration, &p.Sequence, &p.Revision, &p.Reason, &p.Title, &p.ShowTitle, &p.Season, &p.Episode, &p.Available, &p.Kind, &p.AssetID, &p.FollowingID)
 	p.Artwork = "/api/v1/media/" + p.MediaID + "/artwork/poster"
 	return p, e
 }
@@ -69,17 +69,18 @@ func (s *Service) one(ctx context.Context, id, where string, args ...any) (*Entr
 }
 func (s *Service) Diagnostics(ctx context.Context, id string) ([]string, error) {
 	out := []string{}
-	rows, e := s.db.QueryContext(ctx, `SELECT p.start_time_utc,p.end_time_utc,p.duration_ms,p.sequence_number,m.id FROM channel_programs p LEFT JOIN plex_media_items m ON m.id=p.media_item_id WHERE channel_id=? ORDER BY start_time_utc`, id)
+	rows, e := s.db.QueryContext(ctx, `SELECT p.start_time_utc,p.end_time_utc,p.duration_ms,p.id,m.id FROM broadcast_timeline p LEFT JOIN plex_media_items m ON m.id=p.media_item_id WHERE channel_id=? ORDER BY start_time_utc`, id)
 	if e != nil {
 		return out, e
 	}
 	defer rows.Close()
 	var end int64
-	seen := map[int64]bool{}
+	seen := map[string]bool{}
 	counts := map[string]int{}
 	first := true
 	for rows.Next() {
-		var a, b, d, n int64
+		var a, b, d int64
+		var n string
 		var media *string
 		if e = rows.Scan(&a, &b, &d, &n, &media); e != nil {
 			return out, e
@@ -207,4 +208,8 @@ func (s *Service) ChannelIDs(ctx context.Context, offset, limit int) ([]string, 
 // Program retrieves a retained persisted identity, scoped to its channel.
 func (s *Service) Program(ctx context.Context, channel, id string) (*Entry, error) {
 	return s.one(ctx, channel, "p.id=?", id)
+}
+
+func (s *Service) NextProgram(ctx context.Context, id string, at time.Time) (*Entry, error) {
+	return s.one(ctx, id, `p.entry_type='PROGRAM' AND p.start_time_utc>? ORDER BY p.start_time_utc`, at.UnixMilli())
 }

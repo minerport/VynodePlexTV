@@ -347,10 +347,14 @@ export function GuideGrid({
                 >
                   <div className="guide-channel">
                     <img src={c.logo} alt="" loading="lazy" />
-                    <div>
+                    <button
+                      className="guide-channel-tune"
+                      aria-label={`Watch ${c.number} ${c.name} live`}
+                      onClick={() => onTune(c.id)}
+                    >
                       <strong>{c.number}</strong>
                       <span>{c.name}</span>
-                    </div>
+                    </button>
                     <FavoriteButton
                       id={c.id}
                       favorite={c.favorite}

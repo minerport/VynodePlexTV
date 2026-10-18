@@ -188,3 +188,25 @@ func TestGuideRejectsMalformedIntervals(t *testing.T) {
 		t.Fatal("invalid detail timing accepted")
 	}
 }
+func TestGuideExcludesInterstitialMicroCells(t *testing.T) {
+	s := fixture(t)
+	ctx := context.Background()
+	if _, e := s.db.Exec(`INSERT INTO interstitial_assets(id,name,kind,source,duration_ms,created_at,updated_at) VALUES('a','Next','COMING_UP_NEXT','GENERATED_METADATA',10000,1,1);INSERT INTO presentation_entries VALUES('break','0','0-0','a',NULL,1999999990000,2000000000000,10000,0,'test')`); e != nil {
+		t.Fatal(e)
+	}
+	w, e := s.Window(ctx, "u", Query{Start: 1999999980000, End: 2000000100000})
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, c := range w.Channels {
+		for _, p := range c.Programs {
+			if p.ID == "break" {
+				t.Fatal("presentation leaked as guide cell")
+			}
+		}
+	}
+	d, e := s.Detail(ctx, "u", "0-0")
+	if e != nil || d.Title != "Film" {
+		t.Fatal(d, e)
+	}
+}

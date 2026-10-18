@@ -150,6 +150,9 @@ it("uses server behind-live state after pause or seek", async () => {
 });
 it("transitions only when the server directs a live boundary", async () => {
   const tune = vi.spyOn(playbackAPI, "tune").mockResolvedValue(fixture);
+  const advance = vi
+    .spyOn(playbackAPI, "advance")
+    .mockResolvedValue({ ...fixture, streamUrl: "/next" });
   vi.mocked(playbackAPI.heartbeat).mockResolvedValueOnce({
     serverTime: 3700000,
     mode: "LIVE",
@@ -160,7 +163,9 @@ it("transitions only when the server directs a live boundary", async () => {
   const { c, video } = player();
   await c.tune("channel");
   video.dispatchEvent(new Event("playing"));
-  await waitFor(() => expect(tune).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(advance).toHaveBeenCalledTimes(1));
+  expect(tune).toHaveBeenCalledTimes(1);
+  expect(advance).toHaveBeenCalledWith(fixture.id, expect.any(String), false);
 });
 it("discards a late tune response after channel switching", async () => {
   let resolve!: (v: Tune) => void;
@@ -212,4 +217,15 @@ it("preserves the no-channel setup experience", async () => {
   expect(
     await screen.findByText("Create your first channel"),
   ).toBeInTheDocument();
+});
+it("does not mistake the end-of-media pause event for a viewer pause", async () => {
+  vi.spyOn(playbackAPI, "tune").mockResolvedValue(fixture);
+  const { c, video } = player();
+  await c.tune("channel");
+  video.dispatchEvent(new Event("playing"));
+  await waitFor(() => expect(playbackAPI.heartbeat).toHaveBeenCalled());
+  vi.mocked(playbackAPI.heartbeat).mockClear();
+  Object.defineProperty(video, "ended", { configurable: true, value: true });
+  video.dispatchEvent(new Event("pause"));
+  expect(playbackAPI.heartbeat).not.toHaveBeenCalled();
 });

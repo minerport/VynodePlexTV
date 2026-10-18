@@ -2,6 +2,7 @@
 package scheduler
 
 import (
+	"afterglow.local/tv/internal/interstitials"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -62,21 +63,25 @@ type Item struct {
 	AddedAt  int64  `json:"addedAt,omitempty"`
 }
 type Entry struct {
-	ID        string `json:"id"`
-	ChannelID string `json:"channelId"`
-	MediaID   string `json:"mediaId"`
-	Start     int64  `json:"start"`
-	End       int64  `json:"end"`
-	Duration  int64  `json:"durationMs"`
-	Sequence  int64  `json:"sequence"`
-	Revision  int    `json:"revision"`
-	Reason    string `json:"policyReason"`
-	Title     string `json:"title"`
-	ShowTitle string `json:"showTitle"`
-	Season    *int   `json:"season"`
-	Episode   *int   `json:"episode"`
-	Available bool   `json:"available"`
-	Artwork   string `json:"artwork"`
+	Kind         string                    `json:"entryType"`
+	AssetID      string                    `json:"assetId,omitempty"`
+	FollowingID  string                    `json:"followingProgramId,omitempty"`
+	Presentation []interstitials.Placement `json:"-"`
+	ID           string                    `json:"id"`
+	ChannelID    string                    `json:"channelId"`
+	MediaID      string                    `json:"mediaId"`
+	Start        int64                     `json:"start"`
+	End          int64                     `json:"end"`
+	Duration     int64                     `json:"durationMs"`
+	Sequence     int64                     `json:"sequence"`
+	Revision     int                       `json:"revision"`
+	Reason       string                    `json:"policyReason"`
+	Title        string                    `json:"title"`
+	ShowTitle    string                    `json:"showTitle"`
+	Season       *int                      `json:"season"`
+	Episode      *int                      `json:"episode"`
+	Available    bool                      `json:"available"`
+	Artwork      string                    `json:"artwork"`
 }
 type State struct {
 	Fingerprint, Config, Membership string

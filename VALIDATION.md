@@ -467,3 +467,103 @@ New: migration 007; `internal/guide/service.go` and tests; `internal/httpapi/gui
 Updated: database migration tests; HTTP API registration/playback and tests; playback service/types and tests; scheduler retained-program lookup; App/focus; player/controller/API/home and player UI tests; browser foundation regression; OpenAPI; Docker/package version; README, ARCHITECTURE, IMPLEMENTATION_PLAN and this validation record.
 
 Recommended next scope, requiring a new instruction: Phase 6 Broadcast Presentation and Interstitials — optional bumpers/trailers/custom clips, coming-up-next, per-channel branding/presentation rules and deterministic interstitial placement/transition presentation. Phase 6 has not started.
+
+## Phase 6 — Broadcast Presentation, 2026-10-17
+
+### Baseline and upgrade
+
+Started from clean Phase 5 `a99048d3d3998e0e391748f0f658d1d3675deb1c`. Read the existing domain, migration, security, deployment and validation boundaries. Baseline 68 backend tests / 152 cases and 48 frontend tests passed, as did builds and the running stack. Preserved a private stopped-container Phase 5 config snapshot and image before upgrading. Applied `008_broadcast_presentation.sql` in place; no `/config` reset.
+
+Database comparison against the snapshot confirms all **10,672 inventory IDs, Plex identities and availability values**, eight channel definitions/sources, four groups, five selected-library records, five explicit static memberships, owner/password hash, settings and encrypted Plex credential bytes/key version are preserved. Existing authentication sessions remain valid. Presentation deliberately shifts only future safe schedule segments on configured channels; historical/current main programs remain protected.
+
+### Implemented and tested
+
+Normalized assets/tags/rules/channel overrides, persisted presentation entries/history and the unified `broadcast_timeline` view. Types: BUMPER, IDENT, TRAILER, COMING_UP_NEXT, CUSTOM_CLIP and FILLER. Sources: inspected local uploads, local Plex media identities, real Plex extras and metadata cards. Before/between/hour-crossing placements, every-N frequency, movie/episode scope, tags, date windows, repeat avoidance/finite-pool relaxation, duration fit and global/channel inheritance. Branding includes separate compact-logo upload, four corner bugs and live-only next-up. No full scheduler rewrite or frontend-only clip insertion.
+
+Final automated checks:
+
+| Check | Result |
+| --- | --- |
+| Fresh Go suite (`go test -count=1 -json ./...`) | **78 top-level tests / 172 cases, 0 failures** |
+| Go vet and gofmt gate | Passed |
+| Frontend Vitest | **55 passed**, 11 files |
+| ESLint and Prettier check | Passed |
+| TypeScript/Vite production build | Passed |
+| CGO-free Go production build | Passed |
+| Docker production image and real Compose health/readiness | Passed, version **0.7.0** |
+| Isolated Docker browser regression | **1 passed**; owner/setup/login, navigation, Plex fixture, restart/persistence |
+| OpenAPI parse/internal-reference check | 83 paths, no missing references |
+
+New coverage includes deterministic selection, seed changes, tag/seasonal/fit/frequency/hour-crossing rules (including repeated DST hour), inheritance/override, repeat relaxation, path/range handling, upload rejection, timeline repair/current-break protection, referenced-asset deletion, local/offline/missing-file fallback, session continuity/ownership, natural-end pause race, guide exclusion of presentation micro-cells, real-extra parsing and remote-extra HLS selection. Presentation administration/preview is denied to USER and unauthenticated requests; mutation CSRF checks remain enforced. Frontend covers overlays, live/catch-up visibility, forms/preview/disable, end-pause behavior and **101-channel** aggregation in both mini-guide and Starting Soon.
+
+A clean Docker install exposed an existing invalid transitive decimal.js lock entry. Corrected it to the published version satisfying jsdom's declared range; fresh npm installation and image builds passed. No runtime feature was replaced to satisfy builds. Vite still reports the existing large lazy HLS player chunk advisory.
+
+### Real assets, rules and timeline
+
+Created three private, non-sensitive test clips: a four-second bumper, three-second ident and four-second custom clip. Uploaded through the authenticated app and inspected server-side. Added a four-second metadata Coming Up Next entry. Plex explicitly returned two real trailer extras (75 and 135 seconds); no inventory rows or external scraped URLs were introduced.
+
+Configured distinct presentation on three existing channels: **101 Handpicked Cinema** (bumper, plus every-third-program trailer), **102 Show Spotlight** (Coming Up Next), and **107 Recently Added Movies** (ident every third program). Browser rule-editor save and confirmed future-repair controls worked. Temporary channel 999 used actual synchronized movie duration with a test anchor near its natural end; it was deleted after validation. No Plex inventory duration or identity was modified to manufacture a transition. Extra rules from aborted probes were removed.
+
+Unified timeline diagnostics across the real database report **zero gaps/overlaps, zero invalid main durations, zero missing media and zero duplicate main sequence positions**. Presentation duration equality is also enforced by migration constraints. Every clip consumes actual time before the following main program. Studio exposes all entries; guide keeps ordinary program cells with genuine time between features, not tiny interstitial cells. Disabled presentation retains historical rows and removes future insertion through normal repair.
+
+Final retained counts after temporary-channel cleanup: **3,069 main programs and 795 presentation entries**. All eight original channel definitions remain. Eight explicit repair jobs left the fingerprinted thirteen-day future timeline unchanged; no test viewer remained active.
+
+### Decoded browser transitions
+
+Chromium on this Windows host played the following complete sequence under **one unchanged viewing-session ID**:
+
+1. Real movie (`Buddy`) — Direct Play, joined near its scheduled end.
+2. Local bumper — decoded MP4.
+3. Local ident — decoded MP4.
+4. Local custom clip — decoded MP4.
+5. Real 135-second Plex trailer (`10,000 B.C. (Trailer 1)`) — **Plex Transcode**, decoded HLS.
+6. Persisted Coming Up Next metadata card.
+7. Next real movie — Direct Play, decoded near its scheduled start.
+
+Seven timeline entries, six decoded video entries, one viewer session, no browser page errors. Next-up appeared before the boundary. Observed tune-response arrival after persisted start: bumper 463 ms, ident 239 ms, custom 145 ms, trailer 357 ms, metadata card 802 ms, next movie 582 ms. These are local observations, not seamless-frame or WAN latency guarantees. There are short stream-loading transitions; no claim of gapless audiovisual stitching.
+
+Repeated the complete sequence after container recreation; the other real 75-second Plex trailer also decoded through Plex Transcode. A separate real TV test played `Rock the Boat` → local bumper → persisted next-up card → the next scheduled episode slot, with three decoded videos, four entries, one viewer session and no page errors. The temporary single-item TV test channel deliberately looped the same episode in its next slot; it did not change the real show channel's membership or order. Next-up appeared during live viewing in both tests.
+
+Real validation found two issues and verified their fixes: a natural video-end pause event could incorrectly leave live mode; hosted Plex extras could advertise MP4 but require Plex HLS rather than a direct `/library/parts` URL. The first now ignores the natural-end pause race with a bounded boundary tolerance; the second uses Plex negotiation while retaining the external-URL prohibition. Failed optional content uses an explicit station-break/next-up card for the remaining interval, preserving the feature's published start time. It never plays an unrelated item or advances the main feature early.
+
+### Offline, restart and presentation UI
+
+Temporarily made only the application's configured Plex endpoint unreachable and restored it in a finally block. Guide, On Now, Starting Soon and local schedules remained usable. A local uploaded clip decoded while Plex was unavailable; a 100-byte range returned 206 with exactly 100 bytes. Plex program playback showed Retry Playback; after endpoint restoration retry decoded the correct real program. Inventory identity/availability comparisons remained unchanged.
+
+Recreated the real Compose container. Asset/rule API representations, sampled three-hour timelines for all eight channels, favorites and last channel were identical. Local uploaded video decoded again after recreation; encrypted Plex credentials remained usable. Tests confirm missing local asset detection, metadata fallback and subsequent feature transition retain one viewer session. Files, rules and branding persist under `/config`.
+
+A final stronger comparison hashed all entries in a fixed **thirteen-day future window**, plus assets, rules and channel branding. Hashes were identical after another container recreation and after all eight channels received repair requests. The repeated transition tests ran against the recreated application.
+
+Browser-inspected desktop administration and 390-pixel phone layout; no horizontal page overflow. Tested the branding preview at 1440 and 390 widths in all four corners. Bugs stay within preview bounds and use safe margins; preview changes do not save channel settings or mutate the live schedule. Uploaded thumbnails, video controls and typed rules remain separate from viewer navigation. No physical television, overscan hardware or Safari claim is made.
+
+### Performance
+
+Ten HTTP samples on eight channels, while local validation/build activity was running:
+
+| Query | Range |
+| --- | --- |
+| Three-hour guide | 8.6–25.2 ms |
+| Guide On Now | 11.8–20.6 ms |
+| Starting Soon | 7.2–23.1 ms |
+
+Presentation snapshots took 0.134–0.174 ms in a separate Go probe against real local metadata. Pure fourteen-day generation (excluding DB writes) measured 0.148 ms for channel 101 with 265 presentation entries, 0.215 ms for channel 102 with 461, and 4.671 ms for channel 107 with 64. Without presentation the same probe measured 0.052, 0.133 and 5.211 ms respectively; these tiny single-run figures include noise and are not throughput promises. Existing indexed program-centric guide queries do not join every presentation row.
+
+Local uploaded video reached browser `canplay` in **291.2 ms cold, 29.8/29.6 ms warm** in three authenticated preview samples. This separates local media readiness from Plex negotiation.
+
+### Security and limitations
+
+Source scan checked **167 source files** against actual Plex credential material in memory without printing it: passed. No private videos, artwork, databases, config, credentials, keys, screenshots or diagnostic dumps are tracked. The unrelated compromised webhook credential was not retrieved, reused or included; external rotation remains outside this repository.
+
+Uploads use generated names, restrictive permissions, size caps, MP4 signature and codec/duration inspection, no shell interpolation, bounded ffprobe output/time/concurrency and no network protocols. Existing role/Origin/CSRF protections cover management and preview. Viewer playback is session-owned; local streams use the same authenticated proxy boundary. Referenced assets cannot be hard-deleted. Plex hosted trailer locations are never fetched directly by Afterglow.
+
+Limits: hourly placement means the next safe feature boundary, not an exact-hour reservation. Filler is a selectable bounded-duration real asset; there is no hard-slot gap packing or automatic clip trimming. Trailer discovery is explicit per local media identity, and availability depends on Plex extras/account/server support. Local assets require H.264 MP4 with AAC or no audio, up to 1080p/ten minutes; no independent transcoder. Total uploaded storage has no quota yet. The guide intentionally shows no micro-cell for breaks; it is not a hard-clock EPG. Physical TV, Safari, WAN and household load remain unvalidated. Existing single-part/1080p Plex playback and manual subtitle/version-selection limits remain.
+
+Mini-guide and Starting Soon now follow channel pagination instead of silently truncating after 100. The server's bounded per-request limits remain intentional. No Phase 7, native client, external IPTV, HDHomeRun, recording or recommendation system was added.
+
+### Files and next scope
+
+New: migration 008; `internal/interstitials` domain/asset inspection/tests; presentation HTTP routes; playback presentation resolver/transition tests; Plex extras adapter/tests; scheduler presentation tests; frontend presentation administration/overlays/CSS/tests; guide pagination tests; presentation OpenAPI update script.
+
+Updated: scheduler generation/query/service/types, playback service/sessions/types/controller/player/home, Plex metadata/playback, channel artwork, guide cell/data/styles and tests, API registration/RBAC tests, Scheduling Studio, app navigation, Docker/Compose/env template, package metadata/lock, OpenAPI and project documentation.
+
+Recommended next phase: **Phase 7 Personalization and Smart Programming**, only after explicit instruction. Per-user ordering/favorites, local viewing-history signals, replaceable On Now ranking, explicit personalized/mood/actor/director/seasonal channel templates and household-aware home presentation. Keep deterministic schedules and user isolation authoritative.

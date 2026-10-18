@@ -1,12 +1,16 @@
 package scheduler
 
 import (
+	"afterglow.local/tv/internal/interstitials"
 	"context"
 	"sort"
 	"strconv"
 )
 
 type Request struct {
+	Presentation            interstitials.Snapshot
+	AssetHistory            map[string]int64
+	PreviousStart           int64
 	Settings                Settings
 	Items                   []Item
 	From, Through, Sequence int64
@@ -42,6 +46,11 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 	}
 	previous := r.Previous
 	shows := append([]string{}, r.Shows...)
+	assetHistory := map[string]int64{}
+	for id, t := range r.AssetHistory {
+		assetHistory[id] = t
+	}
+	previousStart := r.PreviousStart
 	at := r.From
 	seq := r.Sequence
 	for at < r.Through {
@@ -65,7 +74,12 @@ func Generate(ctx context.Context, r Request) ([]Entry, error) {
 				m, reason = distributed(r.Items, history, previous, shows, at, seq, r.Settings)
 			}
 		}
-		out = append(out, Entry{MediaID: m.ID, Start: at, End: at + m.Duration, Duration: m.Duration, Sequence: seq, Reason: reason})
+		clips := r.Presentation.Select(r.Settings.Seed, m.Type, m.ID, seq, at, previousStart, r.Settings.Timezone, assetHistory)
+		if len(clips) > 0 {
+			at = clips[len(clips)-1].End
+		}
+		previousStart = at
+		out = append(out, Entry{Presentation: clips, MediaID: m.ID, Start: at, End: at + m.Duration, Duration: m.Duration, Sequence: seq, Reason: reason})
 		history[m.ID] = at
 		shows = rememberShow(shows, m.Show)
 		previous = &m

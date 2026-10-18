@@ -562,6 +562,9 @@ function ScheduleDetail({ id, csrf }: { id: string; csrf: string }) {
             </time>
             <img loading="lazy" src={p.artwork} alt="" />
             <div>
+              {p.entryType === "INTERSTITIAL" && (
+                <span className="eyebrow">PRESENTATION</span>
+              )}
               <h3>{p.showTitle || p.title}</h3>
               {p.showTitle && (
                 <p>

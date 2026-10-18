@@ -59,6 +59,17 @@ func TestPlaybackRequiresSessionDecision(t *testing.T) {
 			}
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, "/library/metadata/") {
+			// A hosted extra advertises browser-compatible codecs, but its Part
+			// location must never be fetched directly by this application.
+			rec := httptest.NewRecorder()
+			f.serve(rec, r)
+			body := strings.ReplaceAll(rec.Body.String(), `container="mkv"`, `container="mp4"`)
+			body = strings.ReplaceAll(body, `<Part id="101"`, `<Part key="https://external.invalid/trailer.mp4" id="101"`)
+			w.WriteHeader(rec.Code)
+			fmt.Fprint(w, body)
+			return
+		}
 		f.serve(w, r)
 	}))
 	defer up.Close()
@@ -76,7 +87,7 @@ func TestPlaybackRequiresSessionDecision(t *testing.T) {
 		t.Fatal(e)
 	}
 	for _, session := range []string{"first", "second"} {
-		r, e := s.ResolvePlayback(context.Background(), id, Capabilities{ClientType: "browser", HLS: true}, session)
+		r, e := s.ResolvePlayback(context.Background(), id, Capabilities{ClientType: "browser", HLS: true, Containers: []string{"mp4"}, VideoCodecs: []string{"h264"}, AudioCodecs: []string{"aac"}}, session)
 		if e != nil {
 			t.Fatal(e)
 		}

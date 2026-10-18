@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Afterglow TV API
-  version: 0.6.0
+  version: 0.7.0
   description: Self-hosted local inventory, deterministic broadcasts, authenticated Plex playback,
     guide/catch-up and personal viewer preferences. Mutations require exact Origin and session CSRF.
-    No DVR recording or external IPTV.
+    Broadcast presentation is persisted in a unified timeline; optional clips consume real broadcast
+    time.
 servers:
   - url: /api/v1
 tags:
@@ -18,6 +19,7 @@ tags:
   - name: Scheduling
   - name: Playback
   - name: Guide
+  - name: Presentation
 paths:
   /health:
     get:
@@ -2030,7 +2032,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                moveTo: &a20
+                moveTo: &a25
                   type: string
                   nullable: true
                 ungroup: *a2
@@ -2573,7 +2575,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/OnNow"
-                  serverTime: &a31
+                  serverTime: &a36
                     type: integer
                     format: int64
         "400":
@@ -3080,6 +3082,8 @@ paths:
           description: Sign in required
         "404":
           description: Disabled/hidden/missing channel or expired program
+      description: Clients must follow offset/limit while more is true. Mini-guide and Starting Soon
+        aggregate all pages; no silent first-100 truncation.
   /guide/starting-soon:
     get:
       tags:
@@ -3102,6 +3106,8 @@ paths:
           description: Sign in required
         "404":
           description: Disabled/hidden/missing channel or expired program
+      description: Clients must follow offset/limit while more is true. Mini-guide and Starting Soon
+        aggregate all pages; no silent first-100 truncation.
   /guide/programs/{id}:
     get:
       tags:
@@ -3241,6 +3247,456 @@ paths:
           description: Sign in required
         "404":
           description: Disabled/hidden/missing channel or expired program
+  /interstitials/assets:
+    get:
+      tags:
+        - Presentation
+      summary: Owner/admin presentation assets
+      security: &a20
+        - sessionCookie: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresentationAsset"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+    post:
+      tags:
+        - Presentation
+      summary: Create assets
+      security: *a20
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationAsset"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationAsset"
+  /interstitials/assets/{id}:
+    patch:
+      tags:
+        - Presentation
+      summary: Update assets; future changes applied by schedule repair
+      security: *a20
+      parameters:
+        - &a21
+          name: id
+          in: path
+          required: true
+          schema: &a23
+            type: string
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationAsset"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationAsset"
+    delete:
+      tags:
+        - Presentation
+      summary: Delete unreferenced assets
+      security: *a20
+      parameters:
+        - *a21
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: &a22
+                    type: boolean
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /interstitials/rules:
+    get:
+      tags:
+        - Presentation
+      summary: Owner/admin presentation rules
+      security: *a20
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresentationRule"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+    post:
+      tags:
+        - Presentation
+      summary: Create rules
+      security: *a20
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationRule"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationRule"
+  /interstitials/rules/{id}:
+    patch:
+      tags:
+        - Presentation
+      summary: Update rules; future changes applied by schedule repair
+      security: *a20
+      parameters:
+        - *a21
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationRule"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationRule"
+    delete:
+      tags:
+        - Presentation
+      summary: Delete unreferenced rules
+      security: *a20
+      parameters:
+        - *a21
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: *a22
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /interstitials/upload:
+    post:
+      tags:
+        - Presentation
+      summary: Upload inspected MP4/H.264/AAC clip; 256 MiB default, 10 minutes and 1080p maximum
+      security: *a20
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationAsset"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - name
+                - kind
+              properties:
+                file:
+                  type: string
+                  format: binary
+                name: *a23
+                kind: &a38
+                  type: string
+                  enum:
+                    - BUMPER
+                    - IDENT
+                    - TRAILER
+                    - COMING_UP_NEXT
+                    - CUSTOM_CLIP
+                    - FILLER
+  /interstitials/assets/{id}/preview:
+    get:
+      tags:
+        - Presentation
+      summary: Authenticated admin local asset preview
+      security: *a20
+      parameters:
+        - *a21
+        - name: Range
+          in: header
+          schema: *a23
+      responses:
+        "200":
+          description: video/mp4
+        "206":
+          description: Single byte range
+        "401":
+          description: Sign in required
+        "403":
+          description: Admin only
+        "404":
+          description: Local asset unavailable
+        "416":
+          description: Unsatisfiable range
+  /interstitials/trailers:
+    post:
+      tags:
+        - Presentation
+      summary: Discover real Plex trailer extras for a local media identity; no external scraping
+      security: *a20
+      parameters:
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added: &a24
+                    type: integer
+                    format: int64
+                  available: *a24
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mediaId: *a23
+  /channels/{id}/presentation:
+    get:
+      tags:
+        - Presentation
+      summary: Read explicit or default channel branding
+      security: *a20
+      parameters:
+        - *a21
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPresentation"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+    patch:
+      tags:
+        - Presentation
+      summary: Save branding and insertion opt-in
+      security: *a20
+      parameters:
+        - *a21
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelPresentation"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelPresentation"
+  /channels/{id}/presentation/rules/{rule}:
+    put:
+      tags:
+        - Presentation
+      summary: Enable/disable inherited rule for this channel
+      security: *a20
+      parameters:
+        - *a21
+        - name: rule
+          in: path
+          required: true
+          schema: *a23
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: *a22
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: *a22
+  /playback/{id}/advance:
+    post:
+      tags:
+        - Playback
+      summary: Viewer-owned live transition preserving viewer session; resolve authoritative timeline entry
+      security: *a20
+      parameters:
+        - *a21
+        - name: fallback
+          in: query
+          schema: *a22
+          description: Optional presentation failure uses metadata card for remainder of persisted interval
+        - $ref: "#/components/parameters/Origin"
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackTune"
+        "401":
+          description: Sign in required
+        "403":
+          description: Owner/admin role or Origin/CSRF required
+        "422":
+          description: Invalid configuration, unsupported upload or referenced asset deletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
 components:
   securitySchemes:
     sessionCookie:
@@ -3966,39 +4422,39 @@ components:
             - AUTO
             - PLEX
             - UPLOAD
-        uploadId: *a20
+        uploadId: *a25
       required:
         - source
     ChannelDefinition:
       type: object
       additionalProperties: false
       properties:
-        number: &a21
+        number: &a26
           type: string
           pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,23}$
-        name: &a22
+        name: &a27
           type: string
           maxLength: 100
-        shortName: &a23
+        shortName: &a28
           type: string
           maxLength: 24
-        description: &a24
+        description: &a29
           type: string
           maxLength: 2000
-        groupId: *a20
+        groupId: *a25
         enabled: *a2
-        visibility: &a25
+        visibility: &a30
           type: string
           enum:
             - VISIBLE
             - HIDDEN
         sortOrder: *a5
-        logo: &a26
+        logo: &a31
           $ref: "#/components/schemas/ChannelAppearance"
-        background: &a27
+        background: &a32
           $ref: "#/components/schemas/ChannelAppearance"
-        artworkMediaId: *a20
-        source: &a28
+        artworkMediaId: *a25
+        source: &a33
           $ref: "#/components/schemas/ChannelSource"
       required:
         - number
@@ -4011,18 +4467,18 @@ components:
       type: object
       additionalProperties: false
       properties:
-        number: *a21
-        name: *a22
-        shortName: *a23
-        description: *a24
-        groupId: *a20
+        number: *a26
+        name: *a27
+        shortName: *a28
+        description: *a29
+        groupId: *a25
         enabled: *a2
-        visibility: *a25
+        visibility: *a30
         sortOrder: *a5
-        logo: *a26
-        background: *a27
-        artworkMediaId: *a20
-        source: *a28
+        logo: *a31
+        background: *a32
+        artworkMediaId: *a25
+        source: *a33
         id: *a1
         count: *a5
         warnings:
@@ -4149,7 +4605,7 @@ components:
         timezone:
           type: string
           description: IANA timezone
-        anchorMs: &a30
+        anchorMs: &a35
           type: integer
           format: int64
           description: UTC Unix milliseconds
@@ -4173,9 +4629,9 @@ components:
           type: integer
           minimum: 1
           maximum: 30
-        includeUnavailable: &a29
+        includeUnavailable: &a34
           type: boolean
-        enabled: *a29
+        enabled: *a34
         recencyWeighted: *a11
         avoidSameShow: *a11
         minOtherShows:
@@ -4201,8 +4657,8 @@ components:
         id: *a6
         channelId: *a6
         mediaId: *a6
-        start: *a30
-        end: *a30
+        start: *a35
+        end: *a35
         durationMs: *a7
         sequence: *a7
         revision: *a7
@@ -4215,10 +4671,17 @@ components:
         episode:
           type: integer
           nullable: true
-        available: *a29
+        available: *a34
         artwork:
           type: string
           description: Authenticated admin artwork proxy; never a Plex URL/token
+        entryType:
+          type: string
+          enum:
+            - PROGRAM
+            - INTERSTITIAL
+        assetId: *a23
+        followingProgramId: *a23
       description: Persisted interval [start,end). Current and past rows retain original timing; display
         metadata is read from current local inventory.
     SchedulePage:
@@ -4228,9 +4691,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScheduledProgram"
-        more: *a29
-        start: *a30
-        end: *a30
+        more: *a34
+        start: *a35
+        end: *a35
         timezone: *a6
     ScheduleStatus:
       type: object
@@ -4350,7 +4813,7 @@ components:
         audioCodecs:
           type: array
           items: *a9
-        maxHeight: *a31
+        maxHeight: *a36
         hls: *a11
         forceTranscode: *a11
       additionalProperties: false
@@ -4391,9 +4854,9 @@ components:
           type: integer
           format: int64
           description: UTC Unix milliseconds
-        liveOffsetMs: *a31
-        positionMs: *a31
-        durationMs: *a31
+        liveOffsetMs: *a36
+        positionMs: *a36
+        durationMs: *a36
         streamUrl:
           type: string
           description: Same-origin authenticated opaque proxy resource; never a Plex URL
@@ -4405,6 +4868,8 @@ components:
             - DIRECT_STREAM
             - TRANSCODE
             - PLEX_HLS
+            - LOCAL_INTERSTITIAL
+            - METADATA_PRESENTATION
         addedAt:
           type: integer
           format: int64
@@ -4416,12 +4881,14 @@ components:
             - LIVE
             - CURRENT_FROM_BEGINNING
             - CATCH_UP
+        branding:
+          $ref: "#/components/schemas/ChannelPresentation"
     PlaybackUpdate:
       type: object
       properties:
-        serverTime: *a31
+        serverTime: *a36
         mode: *a9
-        liveOffsetMs: *a31
+        liveOffsetMs: *a36
         transition: *a11
         ended: *a11
         message: *a9
@@ -4436,8 +4903,8 @@ components:
         mode: *a9
         state: *a9
         delivery: *a9
-        started: *a31
-        lastSeen: *a31
+        started: *a36
+        lastSeen: *a36
     GuideProgram:
       type: object
       properties:
@@ -4447,11 +4914,11 @@ components:
         title: *a17
         showTitle: *a17
         type: *a17
-        start: &a32
+        start: &a37
           type: integer
           format: int64
-        end: *a32
-        durationMs: *a32
+        end: *a37
+        durationMs: *a37
         season:
           type: integer
           format: int64
@@ -4501,10 +4968,10 @@ components:
             properties:
               id: *a17
               name: *a17
-        serverTime: *a32
+        serverTime: *a37
         timezone: *a17
-        start: *a32
-        end: *a32
+        start: *a37
+        end: *a37
         more: *a19
         warnings:
           type: array
@@ -4533,5 +5000,96 @@ components:
               type: array
               items: *a17
             background: *a17
-            serverTime: *a32
+            serverTime: *a37
             timezone: *a17
+    PresentationAsset:
+      type: object
+      properties:
+        id: *a23
+        name: *a23
+        kind: *a38
+        source:
+          type: string
+          enum:
+            - UPLOAD
+            - PLEX_MEDIA
+            - PLEX_EXTRA
+            - GENERATED_METADATA
+        mediaId: *a23
+        durationMs:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 600000
+        enabled: *a22
+        available: *a22
+        tags:
+          type: array
+          items: *a23
+        activeFrom:
+          type: string
+          description: Inclusive YYYY-MM-DD in channel timezone; empty means unbounded
+        activeUntil: *a23
+        container: *a23
+        videoCodec: *a23
+        audioCodec: *a23
+        width: *a24
+        height: *a24
+        sizeBytes: *a24
+    PresentationRule:
+      type: object
+      properties:
+        id: *a23
+        name: *a23
+        channelId:
+          type: string
+          description: Empty means global default
+        enabled: *a22
+        kind: *a38
+        tag: *a23
+        placement:
+          type: string
+          enum:
+            - BEFORE
+            - BETWEEN
+            - HOURLY
+          description: HOURLY uses first safe boundary after an hour crossing, not a fixed clock slot
+        mediaType:
+          type: string
+          enum:
+            - ""
+            - movie
+            - episode
+        every:
+          type: integer
+          minimum: 1
+        repeatMinutes: *a24
+        maxDurationMs: *a24
+        priority: *a24
+    ChannelPresentation:
+      type: object
+      properties:
+        channelId: *a23
+        enabled: *a22
+        inherit: *a22
+        bug: *a22
+        corner:
+          type: string
+          enum:
+            - top-left
+            - top-right
+            - bottom-left
+            - bottom-right
+        opacity:
+          type: number
+          minimum: 0.1
+          maximum: 0.7
+        size:
+          type: integer
+          minimum: 32
+          maximum: 128
+        compactLogoId: *a23
+        nextUpSeconds:
+          type: integer
+          minimum: 0
+          maximum: 120

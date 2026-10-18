@@ -2,6 +2,7 @@
 package playback
 
 import (
+	"afterglow.local/tv/internal/interstitials"
 	"afterglow.local/tv/internal/plex"
 	"afterglow.local/tv/internal/scheduler"
 	"context"
@@ -51,29 +52,32 @@ type OnNow struct {
 	Progress float64          `json:"progress"`
 }
 type TuneRequest struct {
-	ProgramID      string            `json:"programId,omitempty"`
-	ChannelID      string            `json:"channelId"`
-	Mode           string            `json:"mode"`
-	ClientID       string            `json:"clientId"`
-	Capabilities   plex.Capabilities `json:"capabilities"`
-	ReplaceSession string            `json:"replaceSession,omitempty"`
+	continuation         bool
+	presentationFallback bool
+	ProgramID            string            `json:"programId,omitempty"`
+	ChannelID            string            `json:"channelId"`
+	Mode                 string            `json:"mode"`
+	ClientID             string            `json:"clientId"`
+	Capabilities         plex.Capabilities `json:"capabilities"`
+	ReplaceSession       string            `json:"replaceSession,omitempty"`
 }
 type Tune struct {
-	Origin     string           `json:"origin"`
-	ID         string           `json:"id"`
-	Channel    Channel          `json:"channel"`
-	Program    scheduler.Entry  `json:"program"`
-	Next       *scheduler.Entry `json:"next"`
-	Mode       string           `json:"mode"`
-	State      string           `json:"state"`
-	ServerTime int64            `json:"serverTime"`
-	LiveOffset int64            `json:"liveOffsetMs"`
-	Position   int64            `json:"positionMs"`
-	Duration   int64            `json:"durationMs"`
-	StreamURL  string           `json:"streamUrl"`
-	Mime       string           `json:"mime"`
-	Delivery   string           `json:"delivery"`
-	AddedAt    *int64           `json:"addedAt"`
+	Branding   interstitials.Branding `json:"branding"`
+	Origin     string                 `json:"origin"`
+	ID         string                 `json:"id"`
+	Channel    Channel                `json:"channel"`
+	Program    scheduler.Entry        `json:"program"`
+	Next       *scheduler.Entry       `json:"next"`
+	Mode       string                 `json:"mode"`
+	State      string                 `json:"state"`
+	ServerTime int64                  `json:"serverTime"`
+	LiveOffset int64                  `json:"liveOffsetMs"`
+	Position   int64                  `json:"positionMs"`
+	Duration   int64                  `json:"durationMs"`
+	StreamURL  string                 `json:"streamUrl"`
+	Mime       string                 `json:"mime"`
+	Delivery   string                 `json:"delivery"`
+	AddedAt    *int64                 `json:"addedAt"`
 }
 type Heartbeat struct {
 	Position int64  `json:"positionMs"`

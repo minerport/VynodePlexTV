@@ -21,6 +21,7 @@ import (
 
 	"afterglow.local/tv/internal/channels"
 	"afterglow.local/tv/internal/config"
+	"afterglow.local/tv/internal/interstitials"
 	"afterglow.local/tv/internal/playback"
 	"afterglow.local/tv/internal/plex"
 	"afterglow.local/tv/internal/scheduler"
@@ -62,7 +63,9 @@ func New(db *sql.DB, cfg config.Config, logger *slog.Logger, version string) *AP
 	if err != nil {
 		panic(err)
 	}
-	return &API{scheduler: scheduler.New(db, channels.New(db, cfg.Dir), logger), db: db, cfg: cfg, log: logger, version: version, dummyHash: dummy, limiter: rateLimiter{buckets: map[string]bucket{}}}
+	out := &API{scheduler: scheduler.New(db, channels.New(db, cfg.Dir), logger), db: db, cfg: cfg, log: logger, version: version, dummyHash: dummy, limiter: rateLimiter{buckets: map[string]bucket{}}}
+	out.scheduler.Presentation = interstitials.New(db, cfg.Dir)
+	return out
 }
 
 func (a *API) Handler() http.Handler {
@@ -88,6 +91,7 @@ func (a *API) Handler() http.Handler {
 	a.scheduleRoutes(mux)
 	a.playbackRoutes(mux)
 	a.guideRoutes(mux)
+	a.presentationRoutes(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { problem(w, 404, "API endpoint not found") })
 	mux.HandleFunc("/", a.static)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

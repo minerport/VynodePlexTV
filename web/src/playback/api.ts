@@ -24,6 +24,15 @@ export interface Capabilities {
   forceTranscode?: boolean;
 }
 export interface Tune {
+  branding?: {
+    enabled: boolean;
+    bug: boolean;
+    corner: string;
+    opacity: number;
+    size: number;
+    nextUpSeconds: number;
+    compactLogoId: string;
+  };
   origin?: "LIVE" | "CURRENT_FROM_BEGINNING" | "CATCH_UP";
   id: string;
   channel: Channel;
@@ -63,6 +72,13 @@ export const playbackAPI = {
       "/playback/tune",
       "POST",
       { channelId, mode, clientId, capabilities, replaceSession, programId },
+      csrf,
+    ),
+  advance: (id: string, csrf: string, fallback = false) =>
+    request<Tune>(
+      `/playback/${id}/advance?fallback=${fallback}`,
+      "POST",
+      {},
       csrf,
     ),
   stop: (id: string, csrf: string) =>

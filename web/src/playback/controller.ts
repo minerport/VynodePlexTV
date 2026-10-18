@@ -28,6 +28,7 @@ export class PlayerController {
     needsPlay: false,
     message: "",
   };
+  private metadataAt = 0;
   private epoch = 0;
   private disposed = false;
   private hls: Hls | null = null;
@@ -56,7 +57,7 @@ export class PlayerController {
       void this.heartbeat();
     });
     this.listen("pause", () => {
-      if (this.ready) void this.heartbeat();
+      if (this.ready && !this.video.ended) void this.heartbeat();
     });
     this.listen("seeked", () => {
       if (this.ready) void this.heartbeat();
@@ -126,11 +127,17 @@ export class PlayerController {
   }
   private attach(tune: Tune) {
     this.publish({ tune, error: "", message: "" });
+    this.metadataAt = performance.now();
+    if (tune.delivery === "METADATA_PRESENTATION") {
+      this.ready = true;
+      this.publish({ loading: false, needsPlay: false });
+      return;
+    }
     const video = this.video;
     const offset = tune.positionMs / 1000;
     const attachedAt = performance.now();
     const seek = () => {
-      if (this.state.tune?.id !== tune.id) return;
+      if (this.state.tune?.streamUrl !== tune.streamUrl) return;
       try {
         video.currentTime = Math.min(
           offset +
@@ -178,6 +185,7 @@ export class PlayerController {
     }
   }
   toggle() {
+    if (this.state.tune?.delivery === "METADATA_PRESENTATION") return;
     if (this.video.paused) void this.play();
     else this.video.pause();
   }
@@ -188,26 +196,34 @@ export class PlayerController {
     if (!t || !this.ready || this.polling || this.disposed) return;
     this.polling = true;
     try {
+      const metadata = t.delivery === "METADATA_PRESENTATION";
+      const position = metadata
+        ? Math.min(
+            t.durationMs - 1,
+            t.positionMs + performance.now() - this.metadataAt,
+          )
+        : Math.round(this.video.currentTime * 1000);
       const u = await playbackAPI.heartbeat(
         t.id,
-        Math.round(this.video.currentTime * 1000),
-        this.video.paused && !ended ? "PAUSED" : "PLAYING",
+        Math.round(position),
+        !metadata && this.video.paused && !ended ? "PAUSED" : "PLAYING",
         ended,
         this.csrf,
       );
-      if (this.state.tune?.id !== t.id) return;
+      if (this.state.tune?.streamUrl !== t.streamUrl) return;
       this.publish({
         tune: {
           ...t,
           mode: u.mode,
-          positionMs: Math.round(this.video.currentTime * 1000),
+          positionMs: Math.round(position),
           liveOffsetMs: u.liveOffsetMs,
           serverTime: u.serverTime,
         },
         message: u.message ?? this.state.message,
       });
+      if (metadata) this.metadataAt = performance.now();
       if (u.transition) {
-        await this.tune(t.channel.id, "LIVE");
+        await this.advance();
       } else if (ended) {
         this.publish({
           loading: false,
@@ -223,6 +239,23 @@ export class PlayerController {
         });
     } finally {
       this.polling = false;
+    }
+  }
+  async advance(fallback = false) {
+    const t = this.state.tune;
+    if (!t) return;
+    const epoch = ++this.epoch;
+    this.detach();
+    this.publish({ loading: true, error: "" });
+    try {
+      const next = await playbackAPI.advance(t.id, this.csrf, fallback);
+      if (!this.disposed && epoch === this.epoch) this.attach(next);
+    } catch (e) {
+      this.publish({
+        loading: false,
+        error:
+          e instanceof Error ? e.message : "Transition failed. Retry playback.",
+      });
     }
   }
   async goLive() {
@@ -248,6 +281,10 @@ export class PlayerController {
   }
   async failed() {
     if (this.disposed || !this.state.tune) return;
+    if (this.state.tune.program.entryType === "INTERSTITIAL") {
+      await this.advance(true);
+      return;
+    }
     if (this.state.tune.delivery === "DIRECT_PLAY" && !this.force) {
       this.force = true;
       await this.tune(

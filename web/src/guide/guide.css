@@ -457,3 +457,18 @@
 .guide-channel strong {
   font-size: 19px;
 }
+
+.guide-channel-tune {
+  min-width: 0;
+  overflow: hidden;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  text-align: left;
+}
+.guide-channel-tune span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

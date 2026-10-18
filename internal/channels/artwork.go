@@ -57,7 +57,7 @@ func (s *Service) Upload(ctx context.Context, data []byte, actor string) (Upload
 		return out, e
 	}
 	// Remove only old unreferenced uploads; content-addressed files may be shared by duplicates.
-	rows, e := s.db.QueryContext(ctx, "SELECT id FROM channel_uploads u WHERE created_at<? AND NOT EXISTS(SELECT 1 FROM channels c WHERE c.logo_upload_id=u.id OR c.background_upload_id=u.id)", stamp()-86400)
+	rows, e := s.db.QueryContext(ctx, "SELECT id FROM channel_uploads u WHERE created_at<? AND NOT EXISTS(SELECT 1 FROM channels c WHERE c.logo_upload_id=u.id OR c.background_upload_id=u.id) AND NOT EXISTS(SELECT 1 FROM channel_presentation p WHERE p.compact_logo_id=u.id)", stamp()-86400)
 	if e != nil {
 		return out, e
 	}
@@ -134,6 +134,17 @@ func (s *Service) ChannelArtwork(ctx context.Context, id, kind string) (Artwork,
 	c, e := s.raw(ctx, id)
 	if e != nil {
 		return Artwork{}, e
+	}
+	if kind == "compact" {
+		var compact string
+		e = s.db.QueryRowContext(ctx, "SELECT COALESCE(compact_logo_id,'') FROM channel_presentation WHERE channel_id=?", id).Scan(&compact)
+		if e != nil && e != sql.ErrNoRows {
+			return Artwork{}, e
+		}
+		if compact != "" {
+			return s.UploadArtwork(ctx, compact)
+		}
+		kind = "logo"
 	}
 	a := c.Logo
 	plexKind := "poster"

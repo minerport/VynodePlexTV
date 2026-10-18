@@ -39,7 +39,7 @@ func TestChannelAuthorizationValidationAndLifecycle(t *testing.T) {
 		}
 		return w
 	}
-	for _, path := range []string{"/channels", "/channel-groups", "/channel-metadata/show", "/channel-artwork/missing", "/channels/missing/artwork/logo"} {
+	for _, path := range []string{"/channels", "/channel-groups", "/channel-metadata/show", "/channel-artwork/missing", "/channels/missing/artwork/logo", "/interstitials/assets", "/interstitials/rules", "/interstitials/assets/missing/preview"} {
 		call("GET", "/api/v1"+path, "", 401)
 	}
 	creds := `{"username":"test-owner","password":"test-only-long-password"}`
@@ -57,6 +57,12 @@ func TestChannelAuthorizationValidationAndLifecycle(t *testing.T) {
 			t.Fatal(e)
 		}
 		if role == "USER" {
+			for _, path := range []string{"/interstitials/assets", "/interstitials/rules", "/interstitials/upload", "/interstitials/trailers"} {
+				call("POST", "/api/v1"+path, `{}`, 403)
+			}
+			for _, path := range []string{"/interstitials/assets", "/interstitials/rules", "/interstitials/assets/missing/preview", "/channels/missing/presentation"} {
+				call("GET", "/api/v1"+path, "", 403)
+			}
 			call("POST", "/api/v1/channels", body, 403)
 			for _, path := range []string{"/channels", "/channel-groups", "/channel-metadata/show", "/channel-artwork/missing"} {
 				call("GET", "/api/v1"+path, "", 403)
@@ -64,9 +70,12 @@ func TestChannelAuthorizationValidationAndLifecycle(t *testing.T) {
 			continue
 		}
 		call("GET", "/api/v1/channels", "", 200)
+		call("GET", "/api/v1/interstitials/assets", "", 200)
+		call("GET", "/api/v1/interstitials/rules", "", 200)
 	}
 	saved := csrf
 	csrf = ""
+	call("POST", "/api/v1/interstitials/assets", `{}`, 403)
 	call("POST", "/api/v1/channels", body, 403)
 	csrf = saved
 	w = call("POST", "/api/v1/channels", body, 201)

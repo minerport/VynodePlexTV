@@ -1,3 +1,4 @@
+import { PresentationAdmin } from "./presentation/PresentationAdmin";
 import { GuideGrid } from "./guide/GuideGrid";
 import { watch } from "./playback/api";
 import {
@@ -34,12 +35,14 @@ const Player = lazy(() =>
 );
 import { ViewerHome, ActiveViewers } from "./playback/ViewerHome";
 
-type Page = "live" | "guide" | "channels" | "plex" | "settings";
+type Page =
+  "live" | "guide" | "channels" | "plex" | "settings" | "presentation";
 const pages: { id: Page; name: string; icon: typeof Tv }[] = [
   { id: "live", name: "Live TV", icon: Tv },
   { id: "guide", name: "Guide", icon: Grid2X2 },
   { id: "channels", name: "Channels", icon: Layers },
   { id: "plex", name: "Plex Setup", icon: Radio },
+  { id: "presentation", name: "Broadcast", icon: Clapperboard },
   { id: "settings", name: "Settings", icon: Settings2 },
 ];
 const getPage = (): Page =>
@@ -400,6 +403,8 @@ function Shell({
             userId={session.user.id}
             onTune={watch}
           />
+        ) : page === "presentation" ? (
+          <PresentationAdmin session={session} />
         ) : page === "settings" ? (
           <>
             <SettingsPage
@@ -542,7 +547,7 @@ function EmptyPage({
   page,
   navigate,
 }: {
-  page: Exclude<Page, "live" | "settings">;
+  page: Exclude<Page, "live" | "settings" | "presentation">;
   navigate: (p: Page) => void;
 }) {
   const content = {

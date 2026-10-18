@@ -35,6 +35,9 @@ export interface ScheduleStatus {
   revision: number;
 }
 export interface Program {
+  entryType?: "PROGRAM" | "INTERSTITIAL";
+  assetId?: string;
+  followingProgramId?: string;
   id: string;
   mediaId: string;
   start: number;

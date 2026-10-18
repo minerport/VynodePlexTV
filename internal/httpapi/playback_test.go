@@ -98,7 +98,7 @@ func TestPlaybackHTTPAuthorizationAndLogout(t *testing.T) {
 	w = call("POST", "/playback/tune", body, 201)
 	var tune playback.Tune
 	json.Unmarshal(w.Body.Bytes(), &tune)
-	call("GET", "/playback/"+tune.ID+"/stream/main", "", 200)
+	call("GET", strings.TrimPrefix(tune.StreamURL, "/api/v1"), "", 200)
 	call("POST", "/playback/"+tune.ID+"/heartbeat", `{"positionMs":600000,"state":"PLAYING","ended":false}`, 200)
 	call("GET", "/watch/channels/missing/artwork/logo", "", 404)
 	exec("UPDATE users SET role='ADMIN'")
@@ -106,10 +106,10 @@ func TestPlaybackHTTPAuthorizationAndLogout(t *testing.T) {
 	exec("UPDATE channels SET enabled=0")
 	call("POST", "/playback/tune", body, 404)
 	call("GET", "/guide/programs/p", "", 404)
-	call("GET", "/playback/"+tune.ID+"/stream/main", "", 404)
+	call("GET", strings.TrimPrefix(tune.StreamURL, "/api/v1"), "", 404)
 	exec("UPDATE channels SET enabled=1")
 	call("POST", "/auth/logout", "{}", 200)
-	call("GET", "/playback/"+tune.ID+"/stream/main", "", 401)
+	call("GET", strings.TrimPrefix(tune.StreamURL, "/api/v1"), "", 401)
 	var state string
 	db.QueryRow("SELECT state FROM viewing_sessions WHERE id=?", tune.ID).Scan(&state)
 	if state != "STOPPED" {

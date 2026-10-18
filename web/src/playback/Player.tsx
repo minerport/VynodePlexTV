@@ -1,3 +1,4 @@
+import { BroadcastOverlay } from "../presentation/BroadcastOverlay";
 import { MiniGuide } from "../guide/MiniGuide";
 import { GuideGrid } from "../guide/GuideGrid";
 import { ProgramDetails } from "../guide/ProgramDetails";
@@ -198,6 +199,7 @@ export function Player({
         onPlaying={reveal}
         aria-label="Channel video"
       />
+      {t && !panel && <BroadcastOverlay tune={t} controlsVisible={show} />}
       {digits && <div className="channel-digits">{digits}</div>}
       {(state.loading || state.error || state.needsPlay || state.message) && (
         <div className="player-status" role={state.error ? "alert" : "status"}>
@@ -295,7 +297,7 @@ export function Player({
               Play / Pause
             </button>
             <button
-              disabled={!t}
+              disabled={!t || t.program.entryType === "INTERSTITIAL"}
               onClick={() =>
                 void controller.current?.tune(
                   channelId,
@@ -334,7 +336,7 @@ export function Player({
               Full screen
             </button>
           </div>
-          {t && (
+          {t && t.delivery !== "METADATA_PRESENTATION" && (
             <label className="player-seek">
               Position
               <input
@@ -389,7 +391,7 @@ export function Player({
       )}
       {panel === "details" && t && (
         <ProgramDetails
-          id={t.program.id}
+          id={t.program.followingProgramId || t.program.id}
           csrf={csrf}
           onClose={() => {
             setPanel(null);

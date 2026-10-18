@@ -81,4 +81,12 @@ Clean Phase 4 baseline 46c2564 inspected; baseline backend/frontend tests and pr
 
 Recommended next phase, only on explicit instruction: **Phase 6 — Broadcast Presentation and Interstitials**. Channel bumpers, available trailers, coming-up-next/custom media, optional retro-commercial blocks, per-channel presentation rules, timeline-aware interstitial insertion, branded transitions and network identity. Do not add external IPTV, HDHomeRun, DVR recording, advanced recommendations or a native TV app as part of this scope.
 
-Phase 5 application validation passed, including 68 backend tests / 152 cases, 48 frontend tests, real viewer playback journeys, outage recovery and container persistence. See VALIDATION.md. The unrelated external webhook rotation remains pending its service administration URL. No Phase 6 work started.
+Phase 5 application validation passed, including 68 backend tests / 152 cases, 48 frontend tests, real viewer playback journeys, outage recovery and container persistence. See VALIDATION.md. This is the historical Phase 5 checkpoint; Phase 6 follows below.
+
+## Phase 6 — broadcast presentation
+
+Extend the existing scheduler with persisted interstitial entries and a unified read model, preserving main program identity. Add typed assets/rules, safe local uploads, real Plex extras, deterministic repeat/seasonal/tag selection, channel inheritance/overrides, compact branding, corner bugs and live-only next-up. Separate stable viewer identity from each replaceable stream source. Keep guide program-centric and Scheduling Studio timeline-centric. Remove silent first-100 truncation in mini-guide and Starting Soon.
+
+Validation includes the real Phase 5 database upgrade, three configured persistent channels, private non-sensitive uploaded clips, real Plex trailers, decoded program → local clips → Plex trailer → metadata → next program under one viewer session, offline/recovery, restart and repair stability. Exact evidence and limits are in VALIDATION.md. The unrelated compromised webhook credential was not accessed or reused and remains an external follow-up.
+
+Recommended next scope, only with a new instruction: **Phase 7 — Personalization and Smart Programming**. Per-user channel ordering and richer favorites; viewing-history signals and replaceable On Now ranking; explicit personalized/mood/actor/director/seasonal channel creation; household preferences and a refined personal home. Preserve deterministic persisted schedules, user isolation and offline local membership. No Phase 7 work is started.

@@ -112,7 +112,15 @@ func (a *API) playbackRoutes(mux *http.ServeMux) {
 		}
 		reply(w, 200, v)
 	}))
-	mux.HandleFunc("GET /api/v1/playback/{id}/stream/{resource}", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
+	mux.HandleFunc("POST /api/v1/playback/{id}/advance", a.viewer(func(w http.ResponseWriter, r *http.Request, u Session) {
+		v, e := a.playback.Advance(r.Context(), u.User.ID, authHash(r), r.PathValue("id"), r.URL.Query().Get("fallback") == "true")
+		if e != nil {
+			a.playbackError(w, e)
+			return
+		}
+		reply(w, 200, v)
+	}))
+	mux.HandleFunc("GET /api/v1/playback/{id}/stream/{resource...}", a.viewer(func(w http.ResponseWriter, r *http.Request, s Session) {
 		up, e := a.playback.Fetch(r.Context(), s.User.ID, r.PathValue("id"), r.PathValue("resource"), r.Header.Get("Range"))
 		if e != nil {
 			a.playbackError(w, e)

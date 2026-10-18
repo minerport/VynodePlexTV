@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"afterglow.local/tv/internal/channels"
+	"afterglow.local/tv/internal/interstitials"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -17,15 +18,16 @@ type Membership interface {
 	ScheduleSnapshot(context.Context, string, bool) (channels.Channel, []channels.ScheduleItem, error)
 }
 type Service struct {
-	db      *sql.DB
-	members Membership
-	log     *slog.Logger
-	Now     func() time.Time
-	mu      sync.Mutex
+	Presentation *interstitials.Service
+	db           *sql.DB
+	members      Membership
+	log          *slog.Logger
+	Now          func() time.Time
+	mu           sync.Mutex
 }
 
 func New(db *sql.DB, m Membership, log *slog.Logger) *Service {
-	return &Service{db: db, members: m, log: log, Now: time.Now}
+	return &Service{Presentation: interstitials.New(db, ""), db: db, members: m, log: log, Now: time.Now}
 }
 
 const settingColumns = "channel_id,mode,timezone,anchor_ms,seed,movie_repeat_days,episode_repeat_days,past_days,future_days,include_unavailable,enabled,recency_weighted,avoid_same_show,min_other_shows"
@@ -133,6 +135,13 @@ func (s *Service) input(ctx context.Context, v Settings) (channels.Channel, []It
 	if v.RecencyWeighted || v.AvoidSameShow || v.MinOtherShows > 0 {
 		inputs = append(inputs, v.RecencyWeighted, v.AvoidSameShow, v.MinOtherShows)
 	}
+	presentation, e := s.Presentation.Snapshot(ctx, v.ChannelID)
+	if e != nil {
+		return c, nil, 0, "", "", e
+	}
+	if key := presentation.ScheduleKey(); key != "" {
+		inputs = append(inputs, key)
+	}
 	config := hash(inputs)
 	return c, items, len(media), hash([]any{config, items}), config, nil
 }
@@ -181,6 +190,10 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 		return out, invalid("Requested coverage exceeds configured future horizon")
 	}
 	now := s.Now().UnixMilli()
+	presentation, e := s.Presentation.Snapshot(ctx, id)
+	if e != nil {
+		return out, e
+	}
 	tx, e := s.db.BeginTx(ctx, nil)
 	if e != nil {
 		return out, e
@@ -207,6 +220,25 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	byID := map[string]Item{}
 	for _, m := range items {
 		byID[m.ID] = m
+	}
+	breakDurations := map[int64]int64{}
+	assetHistory := map[string]int64{}
+	rows, e = tx.QueryContext(ctx, `SELECT p.start_time_utc,COALESCE(SUM(x.duration_ms),0) FROM channel_programs p JOIN presentation_entries x ON x.following_program_id=p.id WHERE p.channel_id=? GROUP BY p.id`, id)
+	if e != nil {
+		return out, e
+	}
+	for rows.Next() {
+		var start, d int64
+		if e = rows.Scan(&start, &d); e != nil {
+			rows.Close()
+			return out, e
+		}
+		breakDurations[start] = d
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return out, e
 	}
 	old := []Item{}
 	if e = json.Unmarshal([]byte(st.Membership), &old); e != nil {
@@ -237,11 +269,11 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	}
 	cut := len(timeline)
 	for i, p := range timeline {
-		if p.Start <= now {
+		if p.Start-breakDurations[p.Start] <= now {
 			continue
 		}
 		bad := false
-		if i > 0 && p.Start != timeline[i-1].End {
+		if i > 0 && p.Start-breakDurations[p.Start] != timeline[i-1].End {
 			bad = true
 		}
 		m, ok := byID[p.MediaID]
@@ -262,7 +294,7 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	seq := int64(0)
 	if len(timeline) > 0 {
 		if cut == 0 {
-			from = timeline[0].Start
+			from = timeline[0].Start - breakDurations[timeline[0].Start]
 			seq = timeline[0].Sequence
 		} else {
 			p := timeline[cut-1]
@@ -341,7 +373,29 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 		}
 		shows = rememberShow(shows, m.Show)
 	}
-	generated, e := Generate(ctx, Request{Settings: v, Items: items, From: from, Through: through, Sequence: seq, History: history, Previous: previous, Shows: shows})
+	rows, e = tx.QueryContext(ctx, `SELECT asset_id,MAX(at) FROM (SELECT asset_id,last_start_ms AS at FROM presentation_history WHERE channel_id=? UNION ALL SELECT asset_id,start_time_utc FROM presentation_entries WHERE channel_id=?) GROUP BY asset_id`, id, id)
+	if e != nil {
+		return out, e
+	}
+	for rows.Next() {
+		var asset string
+		var at int64
+		if e = rows.Scan(&asset, &at); e != nil {
+			rows.Close()
+			return out, e
+		}
+		assetHistory[asset] = at
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return out, e
+	}
+	previousStart := int64(0)
+	if cut > 0 {
+		previousStart = timeline[cut-1].Start
+	}
+	generated, e := Generate(ctx, Request{Presentation: presentation, AssetHistory: assetHistory, PreviousStart: previousStart, Settings: v, Items: items, From: from, Through: through, Sequence: seq, History: history, Previous: previous, Shows: shows})
 	if e != nil {
 		return out, e
 	}
@@ -358,12 +412,23 @@ func (s *Service) ensure(ctx context.Context, id string, through int64, force bo
 	defer stmt.Close()
 	generation := uid()
 	for _, p := range generated {
-		if _, e = stmt.ExecContext(ctx, hash([]any{id, p.Sequence, p.Start, p.MediaID, p.Duration, revision}), id, p.MediaID, hash(byID[p.MediaID]), p.Start, p.End, p.Duration, p.Sequence, generation, revision, p.Reason, s.Now().Unix()); e != nil {
+		programID := hash([]any{id, p.Sequence, p.Start, p.MediaID, p.Duration, revision})
+		if _, e = stmt.ExecContext(ctx, programID, id, p.MediaID, hash(byID[p.MediaID]), p.Start, p.End, p.Duration, p.Sequence, generation, revision, p.Reason, s.Now().Unix()); e != nil {
 			return out, e
+		}
+		for i, x := range p.Presentation {
+			_, e = tx.ExecContext(ctx, `INSERT INTO presentation_entries VALUES(?,?,?,?,?,?,?,?,?,?)`, hash([]any{programID, x.AssetID, x.Start, i}), id, programID, x.AssetID, x.RuleID, x.Start, x.End, x.End-x.Start, i, x.Reason)
+			if e != nil {
+				return out, e
+			}
 		}
 		out.Generated++
 		out.End = p.End
 		seq = p.Sequence + 1
+	}
+	_, e = tx.ExecContext(ctx, `INSERT INTO presentation_history SELECT x.channel_id,x.asset_id,MAX(x.start_time_utc) FROM presentation_entries x JOIN channel_programs p ON p.id=x.following_program_id WHERE p.channel_id=? AND p.end_time_utc<? GROUP BY x.asset_id ON CONFLICT(channel_id,asset_id) DO UPDATE SET last_start_ms=MAX(last_start_ms,excluded.last_start_ms)`, id, past)
+	if e != nil {
+		return out, e
 	}
 	// Keep the last air-start of pruned programs, so long repeat windows survive retention and restart.
 	_, e = tx.ExecContext(ctx, `INSERT INTO channel_schedule_history(channel_id,media_item_id,last_start_ms) SELECT channel_id,media_item_id,MAX(start_time_utc) FROM channel_programs WHERE channel_id=? AND end_time_utc<? GROUP BY channel_id,media_item_id ON CONFLICT(channel_id,media_item_id) DO UPDATE SET last_start_ms=MAX(last_start_ms,excluded.last_start_ms)`, id, past)

@@ -8,11 +8,13 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
 
 type liveSession struct {
+	transition                 sync.Mutex
 	mu                         sync.Mutex
 	user, auth, client, server string
 	caps                       plex.Capabilities
@@ -49,7 +51,11 @@ func (s *Service) channel(ctx context.Context, id string) (Channel, error) {
 func (s *Service) Channel(ctx context.Context, id string) (Channel, error) { return s.channel(ctx, id) }
 func safeProgram(p *scheduler.Entry) {
 	if p != nil {
-		p.Artwork = "/api/v1/watch/channels/" + p.ChannelID + "/programs/" + p.ID + "/artwork"
+		artID := p.ID
+		if p.Kind == "INTERSTITIAL" {
+			artID = p.FollowingID
+		}
+		p.Artwork = "/api/v1/watch/channels/" + p.ChannelID + "/programs/" + artID + "/artwork"
 	}
 }
 func (s *Service) OnNow(ctx context.Context) ([]OnNow, error) {
@@ -82,7 +88,7 @@ func (s *Service) OnNow(ctx context.Context) ([]OnNow, error) {
 		if e != nil {
 			return nil, e
 		}
-		next, e := s.schedule.Next(ctx, id, at)
+		next, e := s.schedule.NextProgram(ctx, id, at)
 		if e != nil {
 			return nil, e
 		}
@@ -142,10 +148,20 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 			origin = "CATCH_UP"
 		}
 	}
-	if !p.Available {
+	if p.Kind == "INTERSTITIAL" && r.Mode == "FROM_BEGINNING" {
+		return out, failure("INVALID", "Choose a feature program to watch from beginning")
+	}
+	if !p.Available && p.Kind != "INTERSTITIAL" {
 		return out, failure("NOT_FOUND", "This program is currently unavailable")
 	}
-	if r.ReplaceSession != "" {
+	var continuing *liveSession
+	if r.continuation {
+		continuing, e = s.owned(user, r.ReplaceSession)
+		if e != nil {
+			return out, e
+		}
+	}
+	if r.ReplaceSession != "" && !r.continuation {
 		if e = s.Stop(ctx, user, r.ReplaceSession); e != nil {
 			return out, e
 		}
@@ -158,20 +174,27 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 		}
 	}
 	s.mu.Unlock()
-	if active >= 8 {
+	if active >= 8 && !r.continuation {
 		return out, failure("BUSY", "Too many active viewers for this account. Close another player or wait for expired sessions to clear")
 	}
 	id := uid()
-	resolved, e := s.plex.ResolvePlayback(ctx, p.MediaID, r.Capabilities, id)
+	streamID := id
+	if r.continuation {
+		id = r.ReplaceSession
+	}
+	resolved, e := s.resolve(ctx, p, r.Capabilities, streamID, r.presentationFallback)
 	if e != nil {
 		return out, e
+	}
+	if proxy, ok := resolved.Source.(interface{ SetProxyPrefix(string) }); ok {
+		proxy.SetProxyPrefix("/api/v1/playback/" + id + "/stream/" + streamID + "/")
 	}
 	now := s.Now()
 	if r.Mode == "LIVE" && now.UnixMilli() >= p.End {
 		resolved.Source.Close(context.Background())
 		return out, failure("BOUNDARY", "The program just changed. Retry to join the next program")
 	}
-	next, e := s.schedule.Next(ctx, c.ID, now)
+	next, e := s.schedule.NextProgram(ctx, c.ID, now)
 	if e != nil {
 		resolved.Source.Close(context.Background())
 		return out, e
@@ -183,8 +206,30 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 	if r.Mode == "FROM_BEGINNING" {
 		position = 0
 	}
-	out = Tune{Origin: origin, ID: id, Channel: c, Program: *p, Next: next, Mode: r.Mode, State: "STARTING", ServerTime: now.UnixMilli(), LiveOffset: offset, Position: position, Duration: resolved.Duration, StreamURL: "/api/v1/playback/" + id + "/stream/main", Mime: resolved.Mime, Delivery: resolved.Mode, AddedAt: resolved.AddedAt}
-	_, e = s.db.ExecContext(ctx, `INSERT INTO viewing_sessions(id,user_id,channel_id,program_id,media_item_id,plex_server_id,auth_session_hash,started_at,last_seen_at,playback_mode,scheduled_live_offset_ms,current_position_ms,state,client_identifier,client_type,delivery_mode,origin) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, user, c.ID, p.ID, p.MediaID, resolved.ServerID, auth, now.UnixMilli(), now.UnixMilli(), r.Mode, offset, position, "STARTING", r.ClientID, r.Capabilities.ClientType, resolved.Mode, origin)
+	branding, e := s.schedule.Presentation.Branding(ctx, c.ID)
+	if e != nil {
+		resolved.Source.Close(context.Background())
+		return out, e
+	}
+	out = Tune{Branding: branding, Origin: origin, ID: id, Channel: c, Program: *p, Next: next, Mode: r.Mode, State: "STARTING", ServerTime: now.UnixMilli(), LiveOffset: offset, Position: position, Duration: resolved.Duration, StreamURL: "/api/v1/playback/" + id + "/stream/" + streamID + "/main", Mime: resolved.Mime, Delivery: resolved.Mode, AddedAt: resolved.AddedAt}
+	if continuing != nil {
+		continuing.mu.Lock()
+		defer continuing.mu.Unlock()
+		if continuing.closed {
+			resolved.Source.Close(context.Background())
+			return Tune{}, failure("NOT_FOUND", "Playback session ended during transition")
+		}
+	}
+
+	if continuing != nil {
+		_, e = s.db.ExecContext(ctx, `UPDATE viewing_sessions SET program_id=?,media_item_id=?,plex_server_id=?,last_seen_at=?,playback_mode=?,scheduled_live_offset_ms=?,current_position_ms=?,state='STARTING',delivery_mode=?,origin=?,timeline_entry_id=?,stream_session_id=? WHERE id=?`, p.FollowingID, p.MediaID, resolved.ServerID, now.UnixMilli(), r.Mode, offset, position, resolved.Mode, origin, p.ID, streamID, id)
+	} else {
+		_, e = s.db.ExecContext(ctx, `INSERT INTO viewing_sessions(id,user_id,channel_id,program_id,media_item_id,plex_server_id,auth_session_hash,started_at,last_seen_at,playback_mode,scheduled_live_offset_ms,current_position_ms,state,client_identifier,client_type,delivery_mode,origin) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, user, c.ID, p.FollowingID, p.MediaID, resolved.ServerID, auth, now.UnixMilli(), now.UnixMilli(), r.Mode, offset, position, "STARTING", r.ClientID, r.Capabilities.ClientType, resolved.Mode, origin)
+		if e == nil {
+			_, e = s.db.ExecContext(ctx, "UPDATE viewing_sessions SET timeline_entry_id=?,stream_session_id=? WHERE id=?", p.ID, streamID, id)
+		}
+	}
+
 	if e != nil {
 		resolved.Source.Close(context.Background())
 		return Tune{}, e
@@ -194,6 +239,20 @@ func (s *Service) Tune(ctx context.Context, user, auth string, r TuneRequest) (T
 		resolved.Source.Close(context.Background())
 		s.db.ExecContext(ctx, "UPDATE viewing_sessions SET state='STOPPED' WHERE id=?", id)
 		return Tune{}, e
+	}
+	if continuing != nil {
+		oldSource := continuing.source
+		continuing.cancel()
+		streamCtx, cancel := context.WithCancel(context.Background())
+		continuing.source = resolved.Source
+		continuing.tune = out
+		continuing.last = now.UnixMilli()
+		continuing.ctx = streamCtx
+		continuing.cancel = cancel
+		if e = oldSource.Close(context.Background()); e != nil {
+			s.log.Warn("Previous stream cleanup deferred", "session", id)
+		}
+		return out, nil
 	}
 	streamCtx, cancel := context.WithCancel(context.Background())
 	v := &liveSession{user: user, auth: auth, client: r.ClientID, server: resolved.ServerID, caps: r.Capabilities, source: resolved.Source, tune: out, last: now.UnixMilli(), ctx: streamCtx, cancel: cancel}
@@ -245,7 +304,8 @@ func (s *Service) Heartbeat(ctx context.Context, user, id string, h Heartbeat) (
 	}
 	position := min(h.Position, v.tune.Duration)
 	live := Offset(now, v.tune.Program.Start, v.tune.Duration)
-	transition := v.tune.Mode == "LIVE" && h.State == "PLAYING" && now >= v.tune.Program.End
+	nearLiveEnd := h.Ended && v.tune.Origin == "LIVE" && now >= v.tune.Program.End && now-v.tune.Program.End <= 5000
+	transition := (v.tune.Mode == "LIVE" || nearLiveEnd) && h.State == "PLAYING" && now >= v.tune.Program.End
 	mode := v.tune.Mode
 	if !transition && v.tune.Origin != "CATCH_UP" {
 		if h.State == "PAUSED" || math.Abs(float64(position-live)) > 10000 || now >= v.tune.Program.End {
@@ -274,15 +334,9 @@ func (s *Service) Heartbeat(ctx context.Context, user, id string, h Heartbeat) (
 	return Update{now, mode, live, transition, h.Ended, message}, nil
 }
 func (s *Service) GoLive(ctx context.Context, user, auth, id string) (Tune, error) {
-	v, e := s.owned(user, id)
-	if e != nil {
-		return Tune{}, e
-	}
-	v.mu.Lock()
-	r := TuneRequest{ChannelID: v.tune.Channel.ID, Mode: "LIVE", ClientID: v.client, Capabilities: v.caps, ReplaceSession: id}
-	v.mu.Unlock()
-	return s.Tune(ctx, user, auth, r)
+	return s.Advance(ctx, user, auth, id, false)
 }
+
 func (s *Service) Stop(ctx context.Context, user, id string) error {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
@@ -321,6 +375,14 @@ func (s *Service) Fetch(ctx context.Context, user, id, resource, rangeHeader str
 	closed := v.closed
 	expired := s.Now().UnixMilli()-v.last > 90000
 	channel := v.tune.Channel.ID
+	source := v.source
+	streamCtx := v.ctx
+	prefix := strings.TrimSuffix(strings.TrimPrefix(v.tune.StreamURL, "/api/v1/playback/"+id+"/stream/"), "main")
+	if !strings.HasPrefix(resource, prefix) {
+		v.mu.Unlock()
+		return nil, failure("NOT_FOUND", "Stream has changed")
+	}
+	resource = strings.TrimPrefix(resource, prefix)
 	v.mu.Unlock()
 	if closed || expired {
 		return nil, failure("NOT_FOUND", "Playback session expired. Tune again")
@@ -329,8 +391,8 @@ func (s *Service) Fetch(ctx context.Context, user, id, resource, rangeHeader str
 		return nil, e
 	}
 	requestCtx, cancel := context.WithCancel(ctx)
-	stop := context.AfterFunc(v.ctx, cancel)
-	r, e := v.source.Fetch(requestCtx, resource, rangeHeader)
+	stop := context.AfterFunc(streamCtx, cancel)
+	r, e := source.Fetch(requestCtx, resource, rangeHeader)
 	if e != nil {
 		stop()
 		cancel()

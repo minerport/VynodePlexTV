@@ -23,6 +23,10 @@ type xmlContainer struct {
 	Videos            []xmlItem `xml:"Video"`
 }
 type xmlItem struct {
+	ExtraType int `xml:"extraType,attr"`
+	Extras    struct {
+		Videos []xmlItem `xml:"Video"`
+	} `xml:"Extras"`
 	Key                   string     `xml:"key,attr"`
 	RatingKey             string     `xml:"ratingKey,attr"`
 	ParentKey             string     `xml:"parentRatingKey,attr"`
