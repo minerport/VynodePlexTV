@@ -794,3 +794,9 @@ Replaced the hosted SVG references with a rendered 256x256 PNG in the Docker ima
 Added normal volume/mute and opt-in Web Audio gain up to 200%, with a 150% boost shortcut. Default remains 100%; boosting does not retune Plex or restart playback. One graph per player is reused across channel changes and released on exit. Browser support failures are displayed. Boost can distort loud sources; reset to 100% when unnecessary. This does not establish the cause of low audio on any specific user's source/device.
 
 Validation: 69 web tests, ESLint and production build passed. Tests cover volume/mute without media reload and gain reset/graph reuse/cleanup. Actual listening validation on the user's browser remains pending.
+
+### Shield HLS channel reconnect fix — 2026-10-18
+
+Physical NVIDIA Shield running the prior 0.9.0 development APK repeatedly reported UnrecognizedInputFormatException through ProgressiveMediaPeriod on failing channels. Plex HLS responses use application/vnd.apple.mpegurl, while Media3 requires its canonical application/x-mpegURL MIME for extensionless proxy routes. Added explicit normalization with regression tests, preserving direct-file MIME values. Automatic recovery now has a three-attempt ceiling; switching cancels the previous heartbeat.
+
+Android JVM tests and debug APK build passed. Installed an in-place debug-signed update on the existing Shield, without uninstalling or clearing data. The operator confirmed that a previously failing channel starts with video/audio and mini-guide switching works. This validates this Shield path, not every channel/device. Public signed APK release is separate from this device's development build.

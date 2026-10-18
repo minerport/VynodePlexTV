@@ -24,9 +24,12 @@ class PlayerController(context:Context,private val api:Api,private val scope:Cor
     private var heartbeat:Job?=null
     private var metadataStarted=0L
     private var recovery:Job?=null
+    private var reconnectAttempts=0
     private var wanted:Triple<String,String,String?>?=null
-    init {player.addListener(object:Player.Listener{override fun onPlayerError(error:PlaybackException){state.value=state.value.copy(error="Playback interrupted. Reconnecting…");reconnect()}})}
-    fun tune(channel:String,mode:String="LIVE",program:String?=null) {
+    init {player.addListener(object:Player.Listener{override fun onPlayerError(error:PlaybackException){android.util.Log.w("AfterglowPlayback", "player error code=${error.errorCode}");state.value=state.value.copy(error="Playback interrupted. Reconnecting…");reconnect()}})}
+    fun tune(channel:String,mode:String="LIVE",program:String?=null, recovering:Boolean=false) {
+        if(!recovering){reconnectAttempts=0;recovery?.cancel()}
+        heartbeat?.cancel()
         wanted=Triple(channel,mode,program);generation++;val epoch=generation
         state.value=state.value.copy(loading=true,error=null,pendingChannel=channel)
         pending?.cancel();pending=scope.launch {
@@ -47,9 +50,10 @@ class PlayerController(context:Context,private val api:Api,private val scope:Cor
         }
     }
     private fun apply(t:JSONObject){
+        android.util.Log.i("AfterglowPlayback", "delivery=${t.optString("delivery")} mime=${PlaybackFormat.mime(t.optString("mime"),t.optString("delivery"))}")
         player.stop();player.clearMediaItems();state.value=Viewing(t);metadataStarted=android.os.SystemClock.elapsedRealtime()
         if(t.optString("delivery")!="METADATA_PRESENTATION") {
-            player.setMediaItem(MediaItem.Builder().setUri(api.server+t.getString("streamUrl")).setMimeType(t.optString("mime")).build())
+            player.setMediaItem(MediaItem.Builder().setUri(api.server+t.getString("streamUrl")).setMimeType(PlaybackFormat.mime(t.optString("mime"),t.optString("delivery"))).build())
             player.seekTo(t.optLong("positionMs"));player.prepare();player.play()
         }
         heartbeat?.cancel();heartbeat=scope.launch {while(isActive){val current=state.value.tune?:break
@@ -65,7 +69,16 @@ class PlayerController(context:Context,private val api:Api,private val scope:Cor
     fun seek(delta:Long){player.seekTo((player.currentPosition+delta).coerceAtLeast(0))}
     fun goLive(){scope.launch {try{val id=state.value.tune?.getString("id")?:return@launch;apply(api.call("/playback/$id/go-live","POST"));wanted=Triple(state.value.tune!!.getJSONObject("channel").getString("id"),"LIVE",null)}catch(e:Exception){state.value=state.value.copy(error=e.message)}}}
     fun retry(){wanted?.let{tune(it.first,it.second,it.third)}}
-    private fun reconnect(){if(recovery?.isActive==true)return;recovery=scope.launch{for(wait in listOf(1000L,2000L,4000L,8000L)){delay(wait);try{api.call("/auth/session");retry();return@launch}catch(_:Exception){}};state.value=state.value.copy(error="Unable to reconnect. Retry playback.")}}
+    private fun reconnect(){
+        if(recovery?.isActive==true)return
+        if(reconnectAttempts>=3){heartbeat?.cancel();state.value=state.value.copy(loading=false,error="Playback could not start after 3 attempts. Retry playback or choose another channel.");return}
+        val attempt=++reconnectAttempts
+        recovery=scope.launch {
+            delay(1000L shl (attempt-1))
+            val target=wanted?:return@launch
+            tune(target.first,target.second,target.third,recovering=true)
+        }
+    }
     suspend fun options()=api.call("/playback/${state.value.tune?.getString("id")}/options")
     fun option(key:String,value:String){capabilities.put(key,value);scope.launch{try{val id=state.value.tune?.getString("id")?:return@launch;apply(api.call("/playback/$id/options","POST",JSONObject().put("capabilities",capabilities).put("positionMs",player.currentPosition)))}catch(e:Exception){state.value=state.value.copy(error=e.message)}}}
     fun stop(){generation++;pending?.cancel();heartbeat?.cancel();recovery?.cancel();player.stop();val id=state.value.tune?.optString("id");state.value=Viewing();if(!id.isNullOrEmpty())scope.launch {runCatching{api.call("/playback/$id/stop","POST")}}}
